@@ -1,0 +1,4 @@
+numpy
+
+# Should remove package an copy duhamels solution code into tests
+eqsig
