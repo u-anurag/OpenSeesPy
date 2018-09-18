@@ -1,5 +1,6 @@
-import OpenSees.opensees as ops
+import openseespy as opy
+
 
 def test_basic():
-    ops.wipe
-    assert 1==1
+    opy.wipe()
+    assert 1 == 1
