@@ -3,7 +3,7 @@ from eqsig import duhamels
 import numpy as np
 
 import openseespy.opensees as opy
-from openseespy.wrap import static as opc
+import openseespy.wrap as opw
 
 
 def get_inelastic_response(mass, k_spring, f_yield, motion, dt, xi=0.05, r_post=0.0):
@@ -19,24 +19,20 @@ def get_inelastic_response(mass, k_spring, f_yield, motion, dt, xi=0.05, r_post=
     :param r_post: post-yield stiffness
     :return:
     """
-
-    opy.wipe()
-    opy.model('basic', '-ndm', 2, '-ndf', 3)  # 2 dimensions, 3 dof per node
+    osi = opw.OpenseesInstance(dimensions=2)
 
     # Establish nodes
-    bot_node = 1
-    top_node = 2
-    opy.node(bot_node, 0., 0.)
-    opy.node(top_node, 0., 0.)
+    bot_node = opw.nodes.Node(osi, 0, 0)
+    top_node = opw.nodes.Node(osi, 0, 0)
 
     # Fix bottom node
-    opy.fix(top_node, opc.FREE, opc.FIXED, opc.FIXED)
-    opy.fix(bot_node, opc.FIXED, opc.FIXED, opc.FIXED)
+    opy.fix(top_node.tag, opw.static.FREE, opw.static.FIXED, opw.static.FIXED)
+    opy.fix(bot_node.tag, opw.static.FIXED, opw.static.FIXED, opw.static.FIXED)
     # Set out-of-plane DOFs to be slaved
-    opy.equalDOF(1, 2, *[2, 3])
+    opy.equalDOF(top_node.tag, bot_node.tag, *[opw.static.Y, opw.static.ROTZ])
 
     # nodal mass (weight / g):
-    opy.mass(top_node, mass, 0., 0.)
+    opy.mass(top_node.tag, mass, 0., 0.)
 
     # Define material
     bilinear_mat_tag = 1
@@ -46,7 +42,7 @@ def get_inelastic_response(mass, k_spring, f_yield, motion, dt, xi=0.05, r_post=
 
     # Assign zero length element
     beam_tag = 1
-    opy.element('zeroLength', beam_tag, bot_node, top_node, "-mat", bilinear_mat_tag, "-dir", 1, '-doRayleigh', 1)
+    opy.element('zeroLength', beam_tag, bot_node.tag, top_node.tag, "-mat", bilinear_mat_tag, "-dir", 1, '-doRayleigh', 1)
 
     # Define the dynamic analysis
     load_tag_dynamic = 1
@@ -54,7 +50,7 @@ def get_inelastic_response(mass, k_spring, f_yield, motion, dt, xi=0.05, r_post=
 
     values = list(-1 * motion)  # should be negative
     opy.timeSeries('Path', load_tag_dynamic, '-dt', dt, '-values', *values)
-    opy.pattern('UniformExcitation', pattern_tag_dynamic, opc.X, '-accel', load_tag_dynamic)
+    opy.pattern('UniformExcitation', pattern_tag_dynamic, opw.static.X, '-accel', load_tag_dynamic)
 
     # set damping based on first eigen mode
     angular_freq = opy.eigen('-fullGenLapack', 1) ** 0.5
@@ -69,7 +65,7 @@ def get_inelastic_response(mass, k_spring, f_yield, motion, dt, xi=0.05, r_post=
 
     opy.wipeAnalysis()
 
-    opy.algorithm('Newton')
+    opw.algorithms.Newton(osi)
     opy.system('SparseGeneral')
     opy.numberer('RCM')
     opy.constraints('Transformation')
@@ -93,11 +89,11 @@ def get_inelastic_response(mass, k_spring, f_yield, motion, dt, xi=0.05, r_post=
         curr_time = opy.getTime()
         opy.analyze(1, analysis_dt)
         outputs["time"].append(curr_time)
-        outputs["rel_disp"].append(opy.nodeDisp(top_node, 1))
-        outputs["rel_vel"].append(opy.nodeVel(top_node, 1))
-        outputs["rel_accel"].append(opy.nodeAccel(top_node, 1))
+        outputs["rel_disp"].append(opy.nodeDisp(top_node.tag, 1))
+        outputs["rel_vel"].append(opy.nodeVel(top_node.tag, 1))
+        outputs["rel_accel"].append(opy.nodeAccel(top_node.tag, 1))
         opy.reactions()
-        outputs["force"].append(-opy.nodeReaction(bot_node, 1))  # Negative since diff node
+        outputs["force"].append(-opy.nodeReaction(bot_node.tag, 1))  # Negative since diff node
     opy.wipe()
     for item in outputs:
         outputs[item] = np.array(outputs[item])
