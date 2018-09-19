@@ -35,14 +35,10 @@ def get_inelastic_response(mass, k_spring, f_yield, motion, dt, xi=0.05, r_post=
     opy.mass(top_node.tag, mass, 0., 0.)
 
     # Define material
-    bilinear_mat_tag = 1
-    mat_type = "Steel01"
-    mat_props = [f_yield, k_spring, r_post]
-    opy.uniaxialMaterial(mat_type, bilinear_mat_tag, *mat_props)
+    bilinear_mat = opw.materials.UniaxialSteel01(osi, fy=f_yield, e0=k_spring, b=r_post)
 
-    # Assign zero length element
-    beam_tag = 1
-    opy.element('zeroLength', beam_tag, bot_node.tag, top_node.tag, "-mat", bilinear_mat_tag, "-dir", 1, '-doRayleigh', 1)
+    # Assign zero length element, # Note: pass actual node and material objects into element
+    opw.elements.ZeroLength(osi, bot_node, top_node, mat_x=bilinear_mat, r_flag=1)
 
     # Define the dynamic analysis
     load_tag_dynamic = 1
@@ -83,11 +79,11 @@ def get_inelastic_response(mass, k_spring, f_yield, motion, dt, xi=0.05, r_post=
         curr_time = opy.getTime()
         opy.analyze(1, analysis_dt)
         outputs["time"].append(curr_time)
-        outputs["rel_disp"].append(opy.nodeDisp(top_node.tag, 1))
-        outputs["rel_vel"].append(opy.nodeVel(top_node.tag, 1))
-        outputs["rel_accel"].append(opy.nodeAccel(top_node.tag, 1))
+        outputs["rel_disp"].append(opy.nodeDisp(top_node.tag, opw.static.X))
+        outputs["rel_vel"].append(opy.nodeVel(top_node.tag, opw.static.X))
+        outputs["rel_accel"].append(opy.nodeAccel(top_node.tag, opw.static.X))
         opy.reactions()
-        outputs["force"].append(-opy.nodeReaction(bot_node.tag, 1))  # Negative since diff node
+        outputs["force"].append(-opy.nodeReaction(bot_node.tag, opw.static.X))  # Negative since diff node
     opy.wipe()
     for item in outputs:
         outputs[item] = np.array(outputs[item])
