@@ -2,7 +2,7 @@ import eqsig
 from eqsig import duhamels
 import numpy as np
 
-import openseespy as opy  # change this to the path where opensees python is stored
+import openseespy.opensees as opy
 from tests import opensees_constants as opc
 
 
