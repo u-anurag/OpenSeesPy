@@ -54,12 +54,8 @@ def get_inelastic_response(mass, k_spring, f_yield, motion, dt, xi=0.05, r_post=
 
     # set damping based on first eigen mode
     angular_freq = opy.eigen('-fullGenLapack', 1) ** 0.5
-    alpha_m = 0.0
     beta_k = 2 * xi / angular_freq
-    beta_k_comm = 0.0
-    beta_k_init = 0.0
-
-    opy.rayleigh(alpha_m, beta_k, beta_k_init, beta_k_comm)
+    opw.rayleigh.Rayleigh(osi, alpha_m=0.0, beta_k=beta_k, beta_k_init=0.0, beta_k_comm=0.0)
 
     # Run the dynamic analysis
 
@@ -72,9 +68,7 @@ def get_inelastic_response(mass, k_spring, f_yield, motion, dt, xi=0.05, r_post=
     opy.integrator('Newmark', 0.5, 0.25)
     opy.analysis('Transient')
 
-    tol = 1.0e-10
-    iterations = 10
-    opy.test('EnergyIncr', tol, iterations, 0, 2)
+    opw.test_checks.EnergyIncr(osi, tol=1.0e-10, max_iter=10)
     analysis_time = (len(values) - 1) * dt
     analysis_dt = 0.001
     outputs = {
