@@ -1,6 +1,5 @@
 from collections import OrderedDict
-from tests import conftest
-import matplotlib.pyplot as plt
+
 import sfsimodels
 import eqsig
 import eqsig.duhamels
@@ -9,6 +8,7 @@ import numpy as np
 
 from openseespy import opensees as op
 from tests import extras as opc
+from tests.conftest import TEST_DATA_DIR
 
 
 def calc_yield_curvature(depth, eps_yield):
@@ -21,8 +21,6 @@ def calc_yield_curvature(depth, eps_yield):
     """
     # TODO: get full validation of equation
     return 2.1 * eps_yield / depth
-
-
 
 def elastic_bilin(ep1, ep2, eps_p2, en1=None, en2=None, eps_n2=None):
     if en1 is None:
@@ -122,14 +120,9 @@ def get_inelastic_response(fb, asig, extra_time=0.0, xi=0.05, analysis_dt=0.001)
             ed["C%i-S%i" % (cc, ss)] = ele_i
             mat_props = elastic_bilin(ei_columns[ss][cc - 1], 0.05 * ei_columns[ss][cc - 1], phi_y_col[ss][cc - 1])
             #print(opc.ELASTIC_BILIN, ele_i, *mat_props)
-            # op.uniaxialMaterial(opc.ELASTIC_BILIN, ele_i, *mat_props)
-            op.uniaxialMaterial("Elastic", ele_i, ei_columns[ss][cc - 1])
-            # op.element(opc.BEAM_WITH_HINGES, ele_i,
-            #            *[nd["C%i-S%i" % (cc, ss - 1)], nd["C%i-S%i" % (cc, ss)]],
-            #            sd["C%i-S%i" % (cc, ss)], l_hinge,
-            #            sd["C%i-S%i" % (cc, ss)], l_hinge,
-            #            sd["C%i-S%i" % (cc, ss)], geo_tag
-            #            )
+            op.uniaxialMaterial(opc.ELASTIC_BILIN, ele_i, *mat_props)
+            # op.uniaxialMaterial("Elastic", ele_i, ei_columns[ss][cc - 1])
+
             node_numbers = [nd["C%i-S%i" % (cc, ss)], nd["C%i-S%i" % (cc, ss + 1)]]
             op.element(opc.ELASTIC_BEAM_COLUMN, ele_i,
                        *node_numbers,
@@ -146,8 +139,8 @@ def get_inelastic_response(fb, asig, extra_time=0.0, xi=0.05, analysis_dt=0.001)
             sd["B%i-S%i" % (bb, ss)] = ele_i
             ed["B%i-S%i" % (bb, ss)] = ele_i
             mat_props = elastic_bilin(ei_beams[ss][bb - 1], 0.05 * ei_beams[ss][bb - 1], phi_y_beam[ss][bb - 1])
-            # op.uniaxialMaterial(opc.ELASTIC_BILIN, ele_i, *mat_props)
-            op.uniaxialMaterial("Elastic", ele_i, ei_beams[ss][bb - 1])
+            op.uniaxialMaterial(opc.ELASTIC_BILIN, ele_i, *mat_props)
+            # op.uniaxialMaterial("Elastic", ele_i, ei_beams[ss][bb - 1])
             node_numbers = [nd["C%i-S%i" % (bb, ss + 1)], nd["C%i-S%i" % (bb + 1, ss + 1)]]
             print((opc.BEAM_WITH_HINGES, ele_i,
                        *node_numbers,
@@ -155,7 +148,6 @@ def get_inelastic_response(fb, asig, extra_time=0.0, xi=0.05, analysis_dt=0.001)
                        sd["B%i-S%i" % (bb, ss)], l_hinge,
                        sd["B%i-S%i" % (bb, ss)], geo_tag
                        ))
-
             # Old definition
             # op.element(opc.BEAM_WITH_HINGES, ele_i,
             #  *[nd["C%i-S%i" % (bb, ss - 1)], nd["C%i-S%i" % (bb + 1, ss)]],
@@ -167,7 +159,7 @@ def get_inelastic_response(fb, asig, extra_time=0.0, xi=0.05, analysis_dt=0.001)
             #  )
             # New definition
             # op.element(opc.BEAM_WITH_HINGES, ele_i,
-            #            *[nd["C%i-S%i" % (bb, ss - 1)], nd["C%i-S%i" % (bb + 1, ss)]],
+            #            *node_numbers,
             #             sd["B%i-S%i" % (bb, ss)], l_hinge,
             #            sd["B%i-S%i" % (bb, ss)], l_hinge,
             #            sd["B%i-S%i" % (bb, ss)], geo_tag  # TODO: make this elastic
@@ -218,7 +210,7 @@ def get_inelastic_response(fb, asig, extra_time=0.0, xi=0.05, analysis_dt=0.001)
     tol = 1.0e-10
     iter = 10
     op.test('EnergyIncr', tol, iter, 0, 2)  # TODO: make this test work
-    analysis_time = (len(values) - 1) * dt + extra_time
+    analysis_time = (len(values) - 1) * asig.dt + extra_time
     outputs = {
         "time": [],
         "rel_disp": [],
@@ -300,8 +292,8 @@ def load_small_frame_building_sample_data():
     return fb
 
 
-if __name__ == '__main__':
-    from tests.conftest import TEST_DATA_DIR
+def plot_response():
+    import matplotlib.pyplot as plt
 
     record_path = TEST_DATA_DIR
     record_filename = 'test_motion_dt0p01.txt'
@@ -321,9 +313,32 @@ if __name__ == '__main__':
     ux_opensees = np.interp(time, outputs["time"], outputs["rel_disp"])
     plt.plot(time, ux_opensees, label="BB")
 
-    periods = np.array([2 * 0.71])
+    periods = np.array([2 * 0.7147])
     resp_u, resp_v, resp_a = eqsig.duhamels.response_series(motion=rec, dt=dt, periods=periods, xi=xi)
     plt.plot(acc_signal.time, resp_u[0], label="Duhamels")
+    print(np.sum(np.abs(resp_u[0])), )
+    assert np.isclose(np.sum(np.abs(ux_opensees)), 113.09023), np.sum(np.abs(ux_opensees))
     plt.legend()
     plt.show()
     print("Complete")
+
+
+def test_small_frame_dynamic():
+    record_path = TEST_DATA_DIR
+    record_filename = 'test_motion_dt0p01.txt'
+    dt = 0.01
+    rec = np.loadtxt(record_path + record_filename)
+    acc_signal = eqsig.AccSignal(rec, dt)
+    xi = 0.05
+    time = acc_signal.time
+
+    frame = load_small_frame_building_sample_data()
+
+    outputs = get_inelastic_response(frame, acc_signal, xi=xi, extra_time=0)
+    ux_opensees = np.interp(time, outputs["time"], outputs["rel_disp"])
+    assert np.isclose(np.sum(np.abs(ux_opensees)), 113.09023), np.sum(np.abs(ux_opensees))
+
+
+if __name__ == '__main__':
+
+    plot_response()
