@@ -63,7 +63,7 @@ class UniaxialElasticPP(UniaxialMaterial):
 
 
 # class UniaxialElasticBiLinear(UniaxialMaterial):
-#     type = "ElasticBilin"
+#     op_type = "ElasticBilin"
 #
 #     def __init__(self, osi, ep1, ep2, eps_p2, en1=None, en2=None, eps_n2=None):
 #         """
@@ -126,7 +126,7 @@ class UniaxialPySimple1(UniaxialMaterial):
 
 
 class UniaxialPyLiq1(UniaxialMaterial):
-    type = "PyLiq1"
+    op_type = "PyLiq1"
 
     def __init__(self, osi, soil_type, p_ult, y50, cd, c, p_res, ele1=None, ele2=None, time_series=None):
         """
@@ -168,7 +168,7 @@ class UniaxialPyLiq1(UniaxialMaterial):
         self.time_series = time_series
         osi.n_mats += 1
         self._tag = osi.n_mats
-        self._parameters = [self.type, self._tag, self.p_ult, self.y50, self.cd, self.c, self.p_res]
+        self._parameters = [self.op_type, self._tag, self.p_ult, self.y50, self.cd, self.c, self.p_res]
         if self.ele1 is None:
             self._parameters.append("-timeSeries")
             self._parameters.append(self.time_series)

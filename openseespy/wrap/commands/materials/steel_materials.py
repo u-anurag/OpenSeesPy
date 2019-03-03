@@ -3,7 +3,7 @@ from openseespy.wrap.commands.materials.base_material import UniaxialMaterial
 
 
 class UniaxialSteel01(UniaxialMaterial):
-    type = "Steel01"
+    op_type = "Steel01"
 
     def __init__(self, osi: OpenseesInstance, fy: float, e0: float, b: float, a1=None, a2=None, a3=None, a4=None):
         """
@@ -31,7 +31,7 @@ class UniaxialSteel01(UniaxialMaterial):
         self.a4 = a4
         osi.n_mats += 1
         self._tag = osi.n_mats
-        self._parameters = [self.type, self._tag, self.fy, self.e0, self.b]
+        self._parameters = [self.op_type, self._tag, self.fy, self.e0, self.b]
         for a in self.a_values:
             if a is None:
                 break

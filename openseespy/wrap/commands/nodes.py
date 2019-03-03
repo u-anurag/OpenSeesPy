@@ -2,7 +2,8 @@ from openseespy.wrap.base_models import OpenseesObject
 
 
 class Node(OpenseesObject):
-    base_type = "op_node"
+    op_base_type = "node"
+    op_type = "node"
     x_con = None
     y_con = None
     z_con = None

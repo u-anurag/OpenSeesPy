@@ -2,7 +2,7 @@ from openseespy.wrap.commands.elements.base_elements import ElementBase
 
 
 class ZeroLength(ElementBase):
-    type = "zeroLength"
+    op_type = "zeroLength"
 
     def __init__(self, osi, node_i, node_j, mat=None, mat_x=None, mat_y=None, mat_z=None,
                  mat_rot_x=None, mat_rot_y=None, mat_rot_z=None, r_flag=0):
@@ -14,7 +14,7 @@ class ZeroLength(ElementBase):
         osi.n_eles += 1
         self._tag = osi.n_eles
 
-        self._parameters = [self.type, self._tag, *[self.node_i.tag, self.node_j.tag]]
+        self._parameters = [self.op_type, self._tag, *[self.node_i.tag, self.node_j.tag]]
         mats = []
         dirs = []
         for i, mat in enumerate(self.mats):

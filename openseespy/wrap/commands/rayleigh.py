@@ -2,8 +2,8 @@ from openseespy.wrap.base_models import OpenseesObject
 
 
 class Rayleigh(OpenseesObject):
-    base_type = "op_rayleigh"
-    type = "rayleigh"
+    op_base_type = "rayleigh"
+    op_type = "rayleigh"
 
     def __init__(self, osi, alpha_m, beta_k, beta_k_init, beta_k_comm):
         """
