@@ -2,7 +2,7 @@ from openseespy.wrap.commands.materials.base_material import UniaxialMaterial
 
 
 class UniaxialElastic(UniaxialMaterial):
-    op_type = "Elastic"
+    type = "Elastic"
 
     def __init__(self, osi, e_mod, eta=0.0, e_mod_comp=None):
         """
@@ -26,12 +26,12 @@ class UniaxialElastic(UniaxialMaterial):
         self.e_mod_comp = e_mod_comp
         osi.n_mats += 1
         self._tag = osi.n_mats
-        self._parameters = [self.op_type, self._tag, self.e_mod, self.eta, self.e_mod_comp]
+        self._parameters = [self.type, self._tag, self.e_mod, self.eta, self.e_mod_comp]
         self.to_process()
 
 
 class UniaxialElasticPP(UniaxialMaterial):
-    op_type = "ElasticPP"
+    type = "ElasticPP"
 
     def __init__(self, osi, e_mod, epsy_p, epsy_n=None, eps0=0.0):
         """
@@ -58,12 +58,12 @@ class UniaxialElasticPP(UniaxialMaterial):
         self.eps0 = eps0
         osi.n_mats += 1
         self._tag = osi.n_mats
-        self._parameters = [self.op_type, self._tag, self.e_mod, self.epsy_p, self.epsy_n, self.eps0]
+        self._parameters = [self.type, self._tag, self.e_mod, self.epsy_p, self.epsy_n, self.eps0]
         self.to_process()
 
 
 # class UniaxialElasticBiLinear(UniaxialMaterial):
-#     op_type = "ElasticBilin"
+#     type = "ElasticBilin"
 #
 #     def __init__(self, osi, ep1, ep2, eps_p2, en1=None, en2=None, eps_n2=None):
 #         """
@@ -89,7 +89,7 @@ class UniaxialElasticPP(UniaxialMaterial):
 
 
 class UniaxialPySimple1(UniaxialMaterial):
-    op_type = "PySimple1"
+    type = "PySimple1"
 
     def __init__(self, osi, soil_type: int, p_ult, y50, cd, c):
         """
@@ -121,12 +121,12 @@ class UniaxialPySimple1(UniaxialMaterial):
         self.c = c
         osi.n_mats += 1
         self._tag = osi.n_mats
-        self._parameters = [self.op_type, self._tag, self.p_ult, self.y50, self.cd, self.c]
+        self._parameters = [self.type, self._tag, self.p_ult, self.y50, self.cd, self.c]
         self.to_process()
 
 
 class UniaxialPyLiq1(UniaxialMaterial):
-    op_type = "PyLiq1"
+    type = "PyLiq1"
 
     def __init__(self, osi, soil_type, p_ult, y50, cd, c, p_res, ele1=None, ele2=None, time_series=None):
         """
@@ -168,7 +168,7 @@ class UniaxialPyLiq1(UniaxialMaterial):
         self.time_series = time_series
         osi.n_mats += 1
         self._tag = osi.n_mats
-        self._parameters = [self.op_type, self._tag, self.p_ult, self.y50, self.cd, self.c, self.p_res]
+        self._parameters = [self.type, self._tag, self.p_ult, self.y50, self.cd, self.c, self.p_res]
         if self.ele1 is None:
             self._parameters.append("-timeSeries")
             self._parameters.append(self.time_series)

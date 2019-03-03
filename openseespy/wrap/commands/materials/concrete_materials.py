@@ -2,7 +2,7 @@ from openseespy.wrap.commands.materials.base_material import UniaxialMaterial
 
 
 class UniaxialConcrete01(UniaxialMaterial):
-    mtype = "Concrete01"
+    type = "Concrete01"
     
     def __init__(self, osi, fpc, epsc0, fpcu, eps_ult):
         """
@@ -27,5 +27,5 @@ class UniaxialConcrete01(UniaxialMaterial):
         self.eps_ult = eps_ult
         osi.n_mats += 1
         self._tag = osi.n_mats
-        self._parameters = [self.mtype, self._tag, self.fpc, self.epsc0, self.fpcu, self.eps_ult]
+        self._parameters = [self.type, self._tag, self.fpc, self.epsc0, self.fpcu, self.eps_ult]
         self.to_process()
