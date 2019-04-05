@@ -19,7 +19,13 @@ class OpenseesObject(object):
 
     def to_process(self):
         try:
-            return getattr(opy, self.op_base_type)(*self.parameters)
+            try:
+                return getattr(opy, self.op_base_type)(*self.parameters)
+            except opy.error as e:
+                raise ValueError('opensees.{0}({1}) caused error "{2}"'.format(self.op_base_type,
+                                                                               ','.join(self.parameters,
+                                                                                        e)))
+
         except SystemError as e:
             if None in self.parameters:
                 print(self.parameters)
@@ -52,3 +58,5 @@ class OpenseesObject(object):
     @property
     def base_type(self):
         return self.op_base_type
+
+
