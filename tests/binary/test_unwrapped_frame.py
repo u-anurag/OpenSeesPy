@@ -22,6 +22,7 @@ def calc_yield_curvature(depth, eps_yield):
     # TODO: get full validation of equation
     return 2.1 * eps_yield / depth
 
+
 def elastic_bilin(ep1, ep2, eps_p2, en1=None, en2=None, eps_n2=None):
     if en1 is None:
         en1 = ep1
