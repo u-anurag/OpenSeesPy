@@ -1,50 +1,6 @@
 from openseespy import opensees as op
-import pytest
 
-
-def elastic_section(section_id):
-
-    e_conc = 30e6
-    area = 0.3 * 0.4
-    inertia = 0.3 * 0.4 ** 3 / 12
-
-    op.section("Elastic", section_id, *[e_conc, area, inertia])
-
-
-def bilinear_material(mat_id):
-    e_conc = 30e6
-    depth = 0.4
-    width = 0.3
-    inertia = width * depth ** 3 / 12
-    ei = e_conc * inertia
-    eps_yield = 300.0e6 / 200e9
-    phi_y = 2.1 * eps_yield / depth
-    mat_props = [ei, 0.05 * ei, phi_y]
-    op.uniaxialMaterial("ElasticBilin", mat_id, *mat_props)
-
-
-def uniaxial_steel01_material(mat_id):
-    mat_type = 'Steel01'
-
-    mat_args = [300e6, 200e9, 0.001]
-    op.uniaxialMaterial(mat_type, mat_id, *mat_args)
-
-
-def elastic_section(section_id):
-
-    e_conc = 30e6
-    area = 0.3 * 0.4
-    inertia = 0.3 * 0.4 ** 3 / 12
-
-    op.section("Elastic", section_id, *[e_conc, area, inertia])
-
-
-def uniaxial_steel01_section(section_id, mat_id=None):
-    if mat_id is None:
-        mat_id = section_id
-    uniaxial_steel01_material(mat_id)
-
-    op.section("Uniaxial", section_id, mat_id, "Mz")
+from tests.binary.functions import elastic_section, uniaxial_steel01_material, uniaxial_steel01_section
 
 
 def test_define_uniaxial_steel101_section():
@@ -65,7 +21,6 @@ def test_beam_integration_mid_point_w_elastic():
     op.beamIntegration('HingeMidpoint', integ_tag, section_id, lp_i, section_id, lp_j, section_id)
 
 
-#@pytest.mark.skip()
 def test_beam_integration_mid_point_w_steel01():
     lp_i = 0.1
     lp_j = 0.2
