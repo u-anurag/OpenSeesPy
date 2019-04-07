@@ -119,24 +119,9 @@ def get_inelastic_response(fb, motion, dt, extra_time=0.0, xi=0.05, analysis_dt=
         # set columns
         for cc in range(1, fb.n_cols + 1):
             ele_tag = cc * 100 + ss
-            print(ele_tag)
-            md["C{0}-S{1}S{2}".format(cc, ss, ss + 1)] = ele_tag
-            sd["C{0}-S{1}S{2}".format(cc, ss, ss + 1)] = ele_tag
-
-            yy = phi_y_col[ss][cc - 1] * ei_columns[ss][cc - 1]
-            mat_type = 'Steel01'
             lp_i = 0.4
             lp_j = 0.4  # plastic hinge length
 
-            mat_args = [300e6, 200e9, 0.001]
-            mat_tag = ele_tag
-            left_sect_tag = ele_tag
-            right_sect_tag = 1000 * ele_tag
-            centre_sect_tag = 10000 * ele_tag
-            opy.uniaxialMaterial(mat_type, mat_tag, *mat_args)
-
-            # opy.section("Uniaxial", left_sect_tag, mat_tag, "Mz")
-            # opy.section("Uniaxial", right_sect_tag, mat_tag, "Mz")
             # central section
             e_conc = 30e6
             area = 0.3 * 0.4
@@ -149,11 +134,12 @@ def get_inelastic_response(fb, motion, dt, extra_time=0.0, xi=0.05, analysis_dt=
             sd["C{0}-S{1}S{2}C".format(cc, ss, ss + 1)] = centre_sect
 
             integ_tag = ele_tag
-            opy.beamIntegration('HingeMidpoint', integ_tag, bot_sect.tag, lp_i, top_sect.tag, lp_j, centre_sect.tag)
+            # opy.beamIntegration('HingeMidpoint', integ_tag, bot_sect.tag, lp_i, top_sect.tag, lp_j, centre_sect.tag)
+            integ = opw.beam_integrations.HingeMidpoint(osi, bot_sect, lp_i, top_sect, lp_j, centre_sect)
 
             left_node = nd["C%i-S%i" % (cc, ss)].tag
             right_node = nd["C%i-S%i" % (cc, ss + 1)].tag
-            opy.element('forceBeamColumn', ele_tag, left_node, right_node, transf_tag, integ_tag)
+            opy.element('forceBeamColumn', ele_tag, left_node, right_node, transf_tag, integ.tag)
 
         # Set beams
         for bb in range(1, fb.n_bays + 1):
