@@ -64,8 +64,7 @@ def get_inelastic_response(fb, motion, dt, extra_time=0.0, xi=0.05, analysis_dt=
     sto_ys = np.insert(sto_ys, 0, 0)
     for cc in range(1, n_cols + 1):
         for ss in range(fb.n_storeys + 1):
-            n_i = cc * 100 + ss
-            nd["C%i-S%i" % (cc, ss)] = opw.nodes.Node(osi, col_xs[cc - 1], sto_ys[ss])
+            nd["C{0}-S{1}".format(cc, ss)] = opw.nodes.Node(osi, col_xs[cc - 1], sto_ys[ss])
 
             if ss != 0:
                 if cc == 1:
@@ -74,12 +73,12 @@ def get_inelastic_response(fb, motion, dt, extra_time=0.0, xi=0.05, analysis_dt=
                     node_mass = trib_mass_per_length * fb.bay_lengths[-1] / 2
                 else:
                     node_mass = trib_mass_per_length * (fb.bay_lengths[cc - 2] + fb.bay_lengths[cc - 1] / 2)
-                opy.mass(nd["C%i-S%i" % (cc, ss)].tag, node_mass, 0., 0.)
+                opw.set_node_mass(nd["C{0}-S{1}".format(cc, ss)], node_mass, 0., 0.)
 
     # Set all nodes on a storey to have the same displacement
     for ss in range(0, fb.n_storeys + 1):
         for cc in range(1, n_cols + 1):
-            opy.equalDOF(nd["C%i-S%i" % (1, ss)].tag, nd["C%i-S%i" % (cc, ss)].tag,  opc.X)
+            opw.set_equal_dofs(nd["C{0}-S{1}".format(1, ss)], nd["C{0}-S{1}".format(cc, ss)], opc.X)
 
     # Fix all base nodes
     for cc in range(1, n_cols + 1):
@@ -121,9 +120,9 @@ def get_inelastic_response(fb, motion, dt, extra_time=0.0, xi=0.05, analysis_dt=
         for cc in range(1, fb.n_cols + 1):
             ele_tag = cc * 100 + ss
             print(ele_tag)
-            md["C%i-S%i" % (cc, ss)] = ele_tag
-            sd["C%i-S%i" % (cc, ss)] = ele_tag
-            ed["C%i-S%i" % (cc, ss)] = ele_tag
+            md["C{0}-S{1}S{2}".format(cc, ss, ss + 1)] = ele_tag
+            sd["C{0}-S{1}S{2}".format(cc, ss, ss + 1)] = ele_tag
+
             yy = phi_y_col[ss][cc - 1] * ei_columns[ss][cc - 1]
             mat_type = 'Steel01'
             lp_i = 0.4
@@ -142,14 +141,15 @@ def get_inelastic_response(fb, motion, dt, extra_time=0.0, xi=0.05, analysis_dt=
             e_conc = 30e6
             area = 0.3 * 0.4
             inertia = 0.3 * 0.4 ** 3 / 12
+            top_sect = opw.sections.Elastic(osi, e_conc, area, inertia)
+            bot_sect = opw.sections.Elastic(osi, e_conc, area, inertia)
+            centre_sect = opw.sections.Elastic(osi, e_conc, area, inertia)
+            sd["C{0}-S{1}S{2}T".format(cc, ss, ss + 1)] = top_sect
+            sd["C{0}-S{1}S{2}B".format(cc, ss, ss + 1)] = bot_sect
+            sd["C{0}-S{1}S{2}C".format(cc, ss, ss + 1)] = centre_sect
 
-            opy.section("Elastic", left_sect_tag, *[e_conc, area, inertia])
-            opy.section("Elastic", right_sect_tag, *[e_conc, area, inertia])
-            opy.section("Elastic", centre_sect_tag, *[e_conc, area, inertia])
-            # op.uniaxialMaterial(opc.ELASTIC_BILIN, ele_i, *mat_props)
-            # mat = opw.materials.UniaxialElastic(osi, ei_columns[ss][cc - 1])
             integ_tag = ele_tag
-            opy.beamIntegration('HingeMidpoint', integ_tag, left_sect_tag, lp_i, right_sect_tag, lp_j, centre_sect_tag)
+            opy.beamIntegration('HingeMidpoint', integ_tag, bot_sect.tag, lp_i, top_sect.tag, lp_j, centre_sect.tag)
 
             left_node = nd["C%i-S%i" % (cc, ss)].tag
             right_node = nd["C%i-S%i" % (cc, ss + 1)].tag
