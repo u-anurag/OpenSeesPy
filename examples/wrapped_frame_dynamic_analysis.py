@@ -143,6 +143,7 @@ def get_inelastic_response(fb, motion, dt, extra_time=0.0, xi=0.05, analysis_dt=
             ed["B%i-S%i" % (bb, ss)] = ele_tag
             mat_props = elastic_bilin(ei_beams[ss][bb - 1], 0.05 * ei_beams[ss][bb - 1], phi_y_beam[ss][bb - 1])
             opy.uniaxialMaterial('ElasticBilin', ele_tag, *mat_props)
+
             opy.section("Uniaxial", left_sect_tag, mat_tag, "Mz")
             opy.section("Uniaxial", right_sect_tag, mat_tag, "Mz")
 
@@ -151,9 +152,8 @@ def get_inelastic_response(fb, motion, dt, extra_time=0.0, xi=0.05, analysis_dt=
             area = 0.3 * 0.4
             inertia = 0.3 * 0.4 ** 3 / 12
 
-            # opy.section("Elastic", left_sect_tag, *[e_conc, area, inertia])
-            # opy.section("Elastic", right_sect_tag, *[e_conc, area, inertia])
             opy.section("Elastic", centre_sect_tag, *[e_conc, area, inertia])
+            centre_sect = opw.sections.Elastic(osi, e_conc, a_beams[ss][bb - 1], i_beams[ss][bb - 1])
 
             integ_tag = ele_tag
             opy.beamIntegration('HingeMidpoint', integ_tag, left_sect_tag, lp_i, right_sect_tag, lp_j, centre_sect_tag)

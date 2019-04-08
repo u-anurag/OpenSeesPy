@@ -1,5 +1,5 @@
 from openseespy.wrap.opensees_instance import OpenseesInstance
-from openseespy.wrap.commands.materials.base_material import UniaxialMaterial
+from openseespy.wrap.commands.uniaxial_materials.base_material import UniaxialMaterial
 
 
 class UniaxialSteel01(UniaxialMaterial):

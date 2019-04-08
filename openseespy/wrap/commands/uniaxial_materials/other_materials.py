@@ -1,4 +1,4 @@
-from openseespy.wrap.commands.materials.base_material import UniaxialMaterial
+from openseespy.wrap.commands.uniaxial_materials.base_material import UniaxialMaterial
 
 
 class UniaxialViscous(UniaxialMaterial):
