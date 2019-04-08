@@ -85,9 +85,7 @@ def get_inelastic_response(fb, motion, dt, extra_time=0.0, xi=0.05, analysis_dt=
         opy.fix(nd["C%i-S%i" % (cc, 0)].tag, opc.FIXED, opc.FIXED, opc.FIXED)
 
     # Coordinate transformation
-    geo_tag = 1
-    trans_args = []
-    opy.geomTransf("Linear", geo_tag, *[])
+    transf = opw.transformations.Linear(osi, [])
 
     l_hinge = fb.bay_lengths[0] * 0.1
 
@@ -104,42 +102,32 @@ def get_inelastic_response(fb, motion, dt, extra_time=0.0, xi=0.05, analysis_dt=
     phi_y_beam = calc_yield_curvature(fb.beam_depths, eps_yield) * 10  # TODO: re-evaluate
 
     # Define beams and columns
+    # Columns named as: C<column-number>-S<storey-number>, first column starts at C1-S0 = ground floor left
+    # Beams named as: B<bay-number>-S<storey-number>, first beam starts at B1-S1 = first storey left (foundation at S0)
 
     md = OrderedDict()  # material dict
     sd = OrderedDict()  # section dict
     ed = OrderedDict()  # element dict
-    # Columns named as: C<column-number>-S<storey-number>, first column starts at C1-S0 = ground floor left
-    # Beams named as: B<bay-number>-S<storey-number>, first beam starts at B1-S1 = first storey left (foundation at S0)
-
-    transf_tag = 2
-    opy.geomTransf('Linear', transf_tag, *[])
 
     for ss in range(fb.n_storeys):
 
         # set columns
         for cc in range(1, fb.n_cols + 1):
-            ele_tag = cc * 100 + ss
             lp_i = 0.4
             lp_j = 0.4  # plastic hinge length
 
-            # central section
-            e_conc = 30e6
-            area = 0.3 * 0.4
-            inertia = 0.3 * 0.4 ** 3 / 12
-            top_sect = opw.sections.Elastic(osi, e_conc, area, inertia)
-            bot_sect = opw.sections.Elastic(osi, e_conc, area, inertia)
-            centre_sect = opw.sections.Elastic(osi, e_conc, area, inertia)
+            top_sect = opw.sections.Elastic(osi, e_conc, a_columns[ss][cc - 1], i_columns[ss][cc - 1])
+            bot_sect = opw.sections.Elastic(osi, e_conc, a_columns[ss][cc - 1], i_columns[ss][cc - 1])
+            centre_sect = opw.sections.Elastic(osi, e_conc, a_columns[ss][cc - 1], i_columns[ss][cc - 1])
             sd["C{0}-S{1}S{2}T".format(cc, ss, ss + 1)] = top_sect
             sd["C{0}-S{1}S{2}B".format(cc, ss, ss + 1)] = bot_sect
             sd["C{0}-S{1}S{2}C".format(cc, ss, ss + 1)] = centre_sect
 
-            integ_tag = ele_tag
-            # opy.beamIntegration('HingeMidpoint', integ_tag, bot_sect.tag, lp_i, top_sect.tag, lp_j, centre_sect.tag)
             integ = opw.beam_integrations.HingeMidpoint(osi, bot_sect, lp_i, top_sect, lp_j, centre_sect)
 
-            left_node = nd["C%i-S%i" % (cc, ss)].tag
-            right_node = nd["C%i-S%i" % (cc, ss + 1)].tag
-            opy.element('forceBeamColumn', ele_tag, left_node, right_node, transf_tag, integ.tag)
+            left_node = nd["C%i-S%i" % (cc, ss)]
+            right_node = nd["C%i-S%i" % (cc, ss + 1)]
+            opw.elements.ForceBeamColumn(osi, left_node, right_node, transf, integ)
 
         # Set beams
         for bb in range(1, fb.n_bays + 1):
@@ -172,7 +160,7 @@ def get_inelastic_response(fb, motion, dt, extra_time=0.0, xi=0.05, analysis_dt=
 
             left_node = nd["C%i-S%i" % (bb, ss + 1)].tag
             right_node = nd["C%i-S%i" % (bb + 1, ss + 1)].tag
-            opy.element('forceBeamColumn', ele_tag, left_node, right_node, transf_tag, integ_tag)
+            opy.element('forceBeamColumn', ele_tag, left_node, right_node, transf.tag, integ_tag)
 
     # Define the dynamic analysis
     load_tag_dynamic = 1

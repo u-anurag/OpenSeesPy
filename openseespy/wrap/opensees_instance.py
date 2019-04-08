@@ -11,6 +11,7 @@ class OpenseesInstance(object):
     n_pats = 0
     n_fixs = 0
     n_integs = 0
+    n_transformations = 0
 
     def __init__(self, dimensions: int):
         self.dimensions = dimensions
