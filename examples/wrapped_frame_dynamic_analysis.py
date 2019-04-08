@@ -141,26 +141,23 @@ def get_inelastic_response(fb, motion, dt, extra_time=0.0, xi=0.05, analysis_dt=
             md["B%i-S%i" % (bb, ss)] = ele_tag
             sd["B%i-S%i" % (bb, ss)] = ele_tag
             ed["B%i-S%i" % (bb, ss)] = ele_tag
-            mat_props = elastic_bilin(ei_beams[ss][bb - 1], 0.05 * ei_beams[ss][bb - 1], phi_y_beam[ss][bb - 1])
-            opy.uniaxialMaterial('ElasticBilin', ele_tag, *mat_props)
-
-            opy.section("Uniaxial", left_sect_tag, mat_tag, "Mz")
-            opy.section("Uniaxial", right_sect_tag, mat_tag, "Mz")
-
-            # central section
-            e_conc = 30e6
-            area = 0.3 * 0.4
-            inertia = 0.3 * 0.4 ** 3 / 12
-
-            opy.section("Elastic", centre_sect_tag, *[e_conc, area, inertia])
+            # mat_props = elastic_bilin(ei_beams[ss][bb - 1], 0.05 * ei_beams[ss][bb - 1], phi_y_beam[ss][bb - 1])
+            # opy.uniaxialMaterial('ElasticBilin', ele_tag, *mat_props)
+            mat = opw.uniaxial_materials.ElasticBiLinear(osi, ei_beams[ss][bb - 1], 0.05 * ei_beams[ss][bb - 1], phi_y_beam[ss][bb - 1])
+            left_sect = opw.sections.Uniaxial(osi, mat, quantity=opc.M_Z)
+            right_sect = opw.sections.Uniaxial(osi, mat, quantity=opc.M_Z)
             centre_sect = opw.sections.Elastic(osi, e_conc, a_beams[ss][bb - 1], i_beams[ss][bb - 1])
+            integ = opw.beam_integrations.HingeMidpoint(osi, left_sect, lp_i, right_sect, lp_j, centre_sect)
 
-            integ_tag = ele_tag
-            opy.beamIntegration('HingeMidpoint', integ_tag, left_sect_tag, lp_i, right_sect_tag, lp_j, centre_sect_tag)
+            left_node = nd["C%i-S%i" % (bb, ss + 1)]
+            right_node = nd["C%i-S%i" % (bb + 1, ss + 1)]
+            opw.elements.ForceBeamColumn(osi, left_node, right_node, transf, integ)
 
-            left_node = nd["C%i-S%i" % (bb, ss + 1)].tag
-            right_node = nd["C%i-S%i" % (bb + 1, ss + 1)].tag
-            opy.element('forceBeamColumn', ele_tag, left_node, right_node, transf.tag, integ_tag)
+            # opy.beamIntegration('HingeMidpoint', integ_tag, left_sect_tag, lp_i, right_sect_tag, lp_j, centre_sect_tag)
+            #
+            # left_node = nd["C%i-S%i" % (bb, ss + 1)].tag
+            # right_node = nd["C%i-S%i" % (bb + 1, ss + 1)].tag
+            # opy.element('forceBeamColumn', ele_tag, left_node, right_node, transf.tag, integ_tag)
 
     # Define the dynamic analysis
     load_tag_dynamic = 1

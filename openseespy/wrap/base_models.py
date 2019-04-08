@@ -23,7 +23,7 @@ class OpenseesObject(object):
                 return getattr(opy, self.op_base_type)(*self.parameters)
             except opy.error as e:
                 raise ValueError('opensees.{0}({1}) caused error "{2}"'.format(self.op_base_type,
-                                                                               ','.join(self.parameters),
+                                                                               ','.join(str(x) for x in self.parameters),
                                                                                         e))
 
         except SystemError as e:
@@ -35,7 +35,7 @@ class OpenseesObject(object):
         except AttributeError as e:
             print(e)
             print('opensees.{0}({1}) caused error "{2}"'.format(self.op_base_type,
-                                                                               ','.join(self.parameters),
+                                                                               ','.join(str(x) for x in self.parameters),
                                                                                         e))
             raise exceptions.ModelError("op_base_type: '%s' does not exist in opensees module" % self.op_base_type)
 

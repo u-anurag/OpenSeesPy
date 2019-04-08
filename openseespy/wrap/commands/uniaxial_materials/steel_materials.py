@@ -1,8 +1,8 @@
 from openseespy.wrap.opensees_instance import OpenseesInstance
-from openseespy.wrap.commands.uniaxial_materials.base_material import UniaxialMaterial
+from openseespy.wrap.commands.uniaxial_materials.base_material import UniaxialMaterialBase
 
 
-class UniaxialSteel01(UniaxialMaterial):
+class Steel01(UniaxialMaterialBase):
     op_type = "Steel01"
 
     def __init__(self, osi: OpenseesInstance, fy: float, e0: float, b: float, a1=None, a2=None, a3=None, a4=None):

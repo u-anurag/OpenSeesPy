@@ -1,7 +1,7 @@
-from openseespy.wrap.commands.uniaxial_materials.base_material import UniaxialMaterial
+from openseespy.wrap.commands.uniaxial_materials.base_material import UniaxialMaterialBase
 
 
-class UniaxialConcrete01(UniaxialMaterial):
+class Concrete01(UniaxialMaterialBase):
     op_type = "Concrete01"
     
     def __init__(self, osi, fpc, epsc0, fpcu, eps_ult):

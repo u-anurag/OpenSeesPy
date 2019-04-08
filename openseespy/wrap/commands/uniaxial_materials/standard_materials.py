@@ -1,7 +1,7 @@
-from openseespy.wrap.commands.uniaxial_materials.base_material import UniaxialMaterial
+from openseespy.wrap.commands.uniaxial_materials.base_material import UniaxialMaterialBase
 
 
-class UniaxialElastic(UniaxialMaterial):
+class Elastic(UniaxialMaterialBase):
     type = "Elastic"
 
     def __init__(self, osi, e_mod, eta=0.0, e_mod_comp=None):
@@ -30,7 +30,7 @@ class UniaxialElastic(UniaxialMaterial):
         self.to_process()
 
 
-class UniaxialElasticPP(UniaxialMaterial):
+class ElasticPP(UniaxialMaterialBase):
     type = "ElasticPP"
 
     def __init__(self, osi, e_mod, epsy_p, epsy_n=None, eps0=0.0):
@@ -62,33 +62,7 @@ class UniaxialElasticPP(UniaxialMaterial):
         self.to_process()
 
 
-# class UniaxialElasticBiLinear(UniaxialMaterial):
-#     op_type = "ElasticBilin"
-#
-#     def __init__(self, osi, ep1, ep2, eps_p2, en1=None, en2=None, eps_n2=None):
-#         """
-#
-#         Parameters
-#         ----------
-#         osi : opensees_pack.opensees_instance.OpenseesInstance object
-#             An instance of opensees
-#         ep1
-#         ep2
-#         eps_p2
-#         en1
-#         en2
-#         eps_n2
-#         """
-#         self.eps_n2 = eps_n2
-#         self.ep1 = ep1
-#         self.ep2 = ep2
-#         self.eps_p2 = eps_p2
-#         self.en1 = en1
-#         self.en2 = en2
-#         self._name = osi.add_mat(self)
-
-
-class UniaxialPySimple1(UniaxialMaterial):
+class PySimple1(UniaxialMaterialBase):
     type = "PySimple1"
 
     def __init__(self, osi, soil_type: int, p_ult, y50, cd, c):
@@ -125,7 +99,7 @@ class UniaxialPySimple1(UniaxialMaterial):
         self.to_process()
 
 
-class UniaxialPyLiq1(UniaxialMaterial):
+class PyLiq1(UniaxialMaterialBase):
     op_type = "PyLiq1"
 
     def __init__(self, osi, soil_type, p_ult, y50, cd, c, p_res, ele1=None, ele2=None, time_series=None):

@@ -28,3 +28,15 @@ class Elastic(SectionBase):
             self._parameters.append(self.alpha_y)
             self._parameters.append(self.alpha_z)
         self.to_process()
+
+
+class Uniaxial(SectionBase):
+    op_type = "Uniaxial"
+
+    def __init__(self, osi, mat, quantity):
+        self.mat = mat
+        self.quantity = quantity
+        osi.n_sects += 1
+        self._tag = osi.n_sects
+        self._parameters = [self.op_type, self._tag, self.mat.tag, self.quantity]
+        self.to_process()
