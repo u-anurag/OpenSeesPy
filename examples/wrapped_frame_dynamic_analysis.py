@@ -34,19 +34,21 @@ def elastic_bilin(ep1, ep2, eps_p2, en1=None, en2=None, eps_n2=None):
     return [ep1, ep2, eps_p2, en1, en2, eps_n2]
 
 
-def get_inelastic_response(fb, motion, dt, extra_time=0.0, xi=0.05, analysis_dt=0.001):
+def get_inelastic_response(fb, asig, extra_time=0.0, xi=0.05, analysis_dt=0.001):
     """
     Run seismic analysis of a nonlinear FrameBuilding
 
-    :param mass: SDOF mass
-    :param k_spring: spring stiffness
-    :param f_yield: yield strength
-    :param motion: list, acceleration values
-    :param dt: float, time step of acceleration values
-    :param extra_time: float, additional analysis time after end of ground motion
-    :param xi: damping ratio
-    :param r_post: post-yield stiffness
-    :return:
+    Parameters
+    ----------
+    fb: sfsimodels.Frame2DBuilding object
+    asig: eqsig.AccSignal object
+    extra_time
+    xi
+    analysis_dt
+
+    Returns
+    -------
+
     """
     osi = opw.OpenseesInstance(dimensions=2)
 
@@ -115,35 +117,29 @@ def get_inelastic_response(fb, motion, dt, extra_time=0.0, xi=0.05, analysis_dt=
         for cc in range(1, fb.n_cols + 1):
             lp_i = 0.4
             lp_j = 0.4  # plastic hinge length
+            ele_str = "C{0}-S{1}S{2}".format(cc, ss, ss + 1)
 
             top_sect = opw.sections.Elastic(osi, e_conc, a_columns[ss][cc - 1], i_columns[ss][cc - 1])
             bot_sect = opw.sections.Elastic(osi, e_conc, a_columns[ss][cc - 1], i_columns[ss][cc - 1])
             centre_sect = opw.sections.Elastic(osi, e_conc, a_columns[ss][cc - 1], i_columns[ss][cc - 1])
-            sd["C{0}-S{1}S{2}T".format(cc, ss, ss + 1)] = top_sect
-            sd["C{0}-S{1}S{2}B".format(cc, ss, ss + 1)] = bot_sect
-            sd["C{0}-S{1}S{2}C".format(cc, ss, ss + 1)] = centre_sect
+            sd[ele_str + "T"] = top_sect
+            sd[ele_str + "B"] = bot_sect
+            sd[ele_str + "C"] = centre_sect
 
             integ = opw.beam_integrations.HingeMidpoint(osi, bot_sect, lp_i, top_sect, lp_j, centre_sect)
 
             left_node = nd["C%i-S%i" % (cc, ss)]
             right_node = nd["C%i-S%i" % (cc, ss + 1)]
-            opw.elements.ForceBeamColumn(osi, left_node, right_node, transf, integ)
+            ed[ele_str] = opw.elements.ForceBeamColumn(osi, left_node, right_node, transf, integ)
 
         # Set beams
         for bb in range(1, fb.n_bays + 1):
-            ele_tag = bb * 10000 + ss
-            mat_tag = ele_tag
-            left_sect_tag = ele_tag
-            right_sect_tag = 1000 * ele_tag
-            centre_sect_tag = 10000 * ele_tag
             lp_i = 0.5
             lp_j = 0.5
-            md["B%i-S%i" % (bb, ss)] = ele_tag
-            sd["B%i-S%i" % (bb, ss)] = ele_tag
-            ed["B%i-S%i" % (bb, ss)] = ele_tag
-            # mat_props = elastic_bilin(ei_beams[ss][bb - 1], 0.05 * ei_beams[ss][bb - 1], phi_y_beam[ss][bb - 1])
-            # opy.uniaxialMaterial('ElasticBilin', ele_tag, *mat_props)
+            ele_str = "C{0}C{1}-S{2}".format(bb - 1, bb, ss)
+
             mat = opw.uniaxial_materials.ElasticBiLinear(osi, ei_beams[ss][bb - 1], 0.05 * ei_beams[ss][bb - 1], phi_y_beam[ss][bb - 1])
+            md[ele_str] = mat
             left_sect = opw.sections.Uniaxial(osi, mat, quantity=opc.M_Z)
             right_sect = opw.sections.Uniaxial(osi, mat, quantity=opc.M_Z)
             centre_sect = opw.sections.Elastic(osi, e_conc, a_beams[ss][bb - 1], i_beams[ss][bb - 1])
@@ -151,38 +147,28 @@ def get_inelastic_response(fb, motion, dt, extra_time=0.0, xi=0.05, analysis_dt=
 
             left_node = nd["C%i-S%i" % (bb, ss + 1)]
             right_node = nd["C%i-S%i" % (bb + 1, ss + 1)]
-            opw.elements.ForceBeamColumn(osi, left_node, right_node, transf, integ)
-
-            # opy.beamIntegration('HingeMidpoint', integ_tag, left_sect_tag, lp_i, right_sect_tag, lp_j, centre_sect_tag)
-            #
-            # left_node = nd["C%i-S%i" % (bb, ss + 1)].tag
-            # right_node = nd["C%i-S%i" % (bb + 1, ss + 1)].tag
-            # opy.element('forceBeamColumn', ele_tag, left_node, right_node, transf.tag, integ_tag)
+            ed[ele_str] = opw.elements.ForceBeamColumn(osi, left_node, right_node, transf, integ)
 
     # Define the dynamic analysis
     load_tag_dynamic = 1
     pattern_tag_dynamic = 1
 
-    values = list(-1 * motion)  # should be negative
-    opy.timeSeries('Path', load_tag_dynamic, '-dt', dt, '-values', *values)
+    values = list(-1 * asig.values)  # should be negative
+    opy.timeSeries('Path', load_tag_dynamic, '-dt', asig.dt, '-values', *values)
     opy.pattern('UniformExcitation', pattern_tag_dynamic, opc.X, '-accel', load_tag_dynamic)
 
     # set damping based on first eigen mode
     angular_freq = opy.eigen('-fullGenLapack', 1) ** 0.5
     if isinstance(angular_freq, complex):
         raise ValueError("Angular frequency is complex, issue with stiffness or mass")
-    alpha_m = 0.0
     beta_k = 2 * xi / angular_freq
-    beta_k_comm = 0.0
-    beta_k_init = 0.0
-
-    opy.rayleigh(alpha_m, beta_k, beta_k_init, beta_k_comm)
+    opw.rayleigh.Rayleigh(osi, alpha_m=0.0, beta_k=beta_k, beta_k_init=0.0, beta_k_comm=0.0)
 
     # Run the dynamic analysis
 
     opy.wipeAnalysis()
 
-    opy.algorithm('Newton')
+    opw.algorithms.Newton(osi)
     opy.system('SparseGeneral')
     opy.numberer('RCM')
     opy.constraints('Transformation')
@@ -192,7 +178,7 @@ def get_inelastic_response(fb, motion, dt, extra_time=0.0, xi=0.05, analysis_dt=
     tol = 1.0e-4
     iter = 4
     opy.test('EnergyIncr', tol, iter, 0, 2)
-    analysis_time = (len(values) - 1) * dt + extra_time
+    analysis_time = (len(values) - 1) * asig.dt + extra_time
     outputs = {
         "time": [],
         "rel_disp": [],
@@ -293,7 +279,7 @@ if __name__ == '__main__':
     frame = load_small_frame_building_sample_data()
     print("Building loaded")
 
-    outputs = get_inelastic_response(frame, rec, motion_step, xi=xi, extra_time=0)
+    outputs = get_inelastic_response(frame, acc_signal, xi=xi, extra_time=0)
     print("Analysis complete")
     acc_opensees = np.interp(time, outputs["time"], outputs["rel_accel"]) - rec
     ux_opensees = np.interp(time, outputs["time"], outputs["rel_disp"])
