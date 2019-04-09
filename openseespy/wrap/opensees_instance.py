@@ -12,8 +12,9 @@ class OpenseesInstance(object):
     n_fixs = 0
     n_integs = 0
     n_transformations = 0
+    state = 1  # 0=execute line by line, 1=export to raw openseespy, 2=export reloadable json
 
-    def __init__(self, dimensions: int):
+    def __init__(self, dimensions: int, node_dofs=3):
         self.dimensions = dimensions
         opy.wipe()
-        opy.model('basic', '-ndm', dimensions, '-ndf', 3)  # 2 dimensions, 3 dof per node
+        opy.model('basic', '-ndm', dimensions, '-ndf', node_dofs)  # 2 dimensions, 3 dof per node

@@ -48,7 +48,7 @@ class OpenseesObject(object):
             if i > 40:  # avoid verbose print output
                 break
         p_str = ', '.join(para)
-        return 'op.%s(%s)' % (self.op_base_type, p_str)
+        return 'opy.%s(%s)' % (self.op_base_type, p_str)
 
     @property
     def parameters(self):
