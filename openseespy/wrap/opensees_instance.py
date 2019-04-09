@@ -23,7 +23,7 @@ class OpenseesInstance(object):
         self.dict = OrderedDict()
         if state == 1:
             self.commands.append('opy.wipe()')
-            self.commands.append("opy.model('basic', '-ndm', {0}, '-ndf', {1})")
+            self.commands.append("opy.model('basic', '-ndm', {0}, '-ndf', {1})".format(dimensions, node_dofs))
         if state == 2:
             self.dict['ndm'] = dimensions
             self.dict['ndf'] = node_dofs

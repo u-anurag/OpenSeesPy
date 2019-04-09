@@ -29,10 +29,10 @@ def get_inelastic_response(mass, k_spring, f_yield, motion, dt, xi=0.05, r_post=
     opw.Fix(osi, top_node, opw.static.FREE, opw.static.FIXED, opw.static.FIXED)
     opw.Fix(osi, bot_node, opw.static.FIXED, opw.static.FIXED, opw.static.FIXED)
     # Set out-of-plane DOFs to be slaved
-    opy.equalDOF(top_node.tag, bot_node.tag, *[opw.static.Y, opw.static.ROTZ])
+    opw.EqualDOF(osi, top_node, bot_node, [opw.static.Y, opw.static.ROTZ])
 
     # nodal mass (weight / g):
-    opy.mass(top_node.tag, mass, 0., 0.)
+    opw.Mass(osi, top_node, mass, 0., 0.)
 
     # Define material
     bilinear_mat = opw.uniaxial_materials.Steel01(osi, fy=f_yield, e0=k_spring, b=r_post)

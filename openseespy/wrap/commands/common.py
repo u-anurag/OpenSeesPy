@@ -7,7 +7,7 @@ def set_node_mass(node, x_mass, y_mass, rot_mass):
 
 
 class Mass(OpenseesObject):
-    op_base_type = "Mass"
+    op_base_type = "mass"
     op_type = None
 
     def __init__(self, osi, node, x_mass, y_mass, rot_mass):
@@ -27,10 +27,11 @@ class EqualDOF(OpenseesObject):
     op_base_type = "equalDOF"
     op_type = None
 
-    def __init__(self, osi, node_1, node_2, dof):
+    def __init__(self, osi, node_1, node_2, dofs):
         self.node_1 = node_1
         self.node_2 = node_2
-        self._parameters = [self.node_1.tag, self.node_2.tag, dof]
+        self.dofs = dofs
+        self._parameters = [self.node_1.tag, self.node_2.tag, *self.dofs]
         self.to_process(osi)
 
 
