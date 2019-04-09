@@ -19,4 +19,4 @@ class HingeMidpoint(BeamIntegrationBase):
         self._tag = osi.n_integs
         self._parameters = [self.op_type, self._tag, self.sect_i.tag, self.lp_i, self.sect_j.tag,
                             self.lp_j, self.sect_e.tag]
-        self.to_process()
+        self.to_process(osi)

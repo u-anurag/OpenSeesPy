@@ -16,5 +16,5 @@ class ElasticIsotropic(NDMaterial):
         self._parameters = [self.op_type, self._tag, self.e_mod, self.v]
         if self.rho is not None:
             self._parameters.append(self.rho)
-        self.to_process()
+        self.to_process(osi)
 

@@ -36,5 +36,5 @@ class PressureIndependMultiYield(NDMaterial):
         else:
             # self._keyword_args['noYieldSurf'] = self.no_yield_surf
             self._parameters.append(self.no_yield_surf)
-        self.to_process()
+        self.to_process(osi)
 

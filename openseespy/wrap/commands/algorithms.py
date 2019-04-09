@@ -13,7 +13,7 @@ class Linear(AlgorithmBase):
         self.initial = initial
         self.factor_once = factor_once
         self._parameters = [self.op_type, self.secant, self.initial, self.factor_once]
-        self.to_process()
+        self.to_process(osi)
 
 
 class Newton(AlgorithmBase):
@@ -24,4 +24,4 @@ class Newton(AlgorithmBase):
         self.initial = initial
         self.initial_then_current = initial_then_current
         self._parameters = [self.op_type, self.secant, self.initial, self.initial_then_current]
-        self.to_process()
+        self.to_process(osi)

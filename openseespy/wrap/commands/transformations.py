@@ -18,5 +18,5 @@ class Linear(TransformationBase):
         self._parameters = [self.op_type, self._tag, *self.vecxz]
         if d_i is not None:
             self._parameters += ['jntOffset', self.d_i, self.d_j]
-        self.to_process()
+        self.to_process(osi)
 

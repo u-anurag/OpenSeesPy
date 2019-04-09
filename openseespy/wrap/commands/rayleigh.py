@@ -26,5 +26,5 @@ class Rayleigh(OpenseesObject):
         self.beta_k_init = float(beta_k_init)
         self.beta_k_comm = float(beta_k_comm)
         self._parameters = [self.alpha_m, self.beta_k, self.beta_k_init, self.beta_k_comm]
-        self.to_process()
+        self.to_process(osi)
 

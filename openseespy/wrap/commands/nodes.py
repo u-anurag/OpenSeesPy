@@ -54,4 +54,4 @@ class Node(OpenseesObject):
             self._parameters += ["-vel", self.vel]
         if self.acc is not None:
             self._parameters += ["-accel", self.acc]
-        self.to_process()
+        self.to_process(osi)

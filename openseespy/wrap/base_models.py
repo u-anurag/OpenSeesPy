@@ -1,3 +1,4 @@
+from collections import OrderedDict
 import openseespy.opensees as opy
 from openseespy.wrap import exceptions
 
@@ -17,7 +18,15 @@ class OpenseesObject(object):
     def name(self):
         return self._name
 
-    def to_process(self):
+    def to_process(self, osi):
+        if osi.state == 0:
+            self.to_opensees()
+        elif osi.state == 1:
+            osi.to_commands(self.to_commands())
+        elif osi.state == 1:
+            osi.to_dict(self)
+
+    def to_opensees(self):
         try:
             try:
                 return getattr(opy, self.op_base_type)(*self.parameters)
@@ -61,5 +70,43 @@ class OpenseesObject(object):
     @property
     def base_type(self):
         return self.op_base_type
+
+    def to_dict(self):
+        outputs = OrderedDict()
+        for item in self.__dict__:
+            if '_' ==item[0]:  # do not export private variables
+                continue
+            value = self.__getattribute__(item)
+            if value is None:
+                continue
+            outputs[item] = collect_serial_value(value)
+        return outputs
+
+
+def collect_serial_value(value):
+    if isinstance(value, str):
+        return value
+    elif isinstance(value, int):
+        return value
+    elif hasattr(value, "to_dict"):
+        return value.to_dict()
+    elif hasattr(value, "__len__"):
+        tolist = getattr(value, "tolist", None)
+        if callable(tolist):
+            value = value.tolist()
+            return value
+        else:
+            if hasattr(value, "tag"):
+                return value.tag
+            elif hasattr(value, "to_dict"):
+                value = value.to_dict()
+                return value
+            else:
+                values = []
+                for item in value:
+                    values.append(collect_serial_value(item))
+                return values
+    else:
+        return value
 
 

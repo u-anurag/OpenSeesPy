@@ -14,4 +14,4 @@ class EnergyIncr(TestBase):
         self.p_flag = int(p_flag)
         self.n_type = int(n_type)
         self._parameters = [self.op_type, self.tol, self.max_iter, self.p_flag, self.n_type]
-        self.to_process()
+        self.to_process(osi)

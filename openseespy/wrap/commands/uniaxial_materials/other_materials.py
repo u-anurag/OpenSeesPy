@@ -10,7 +10,7 @@ class Viscous(UniaxialMaterialBase):
         osi.n_mats += 1
         self._tag = osi.n_mats
         self._parameters = [self.op_type, self._tag, self.c, self.alpha]
-        self.to_process()
+        self.to_process(osi)
 
 
 class ElasticBiLinear(UniaxialMaterialBase):
@@ -42,7 +42,7 @@ class ElasticBiLinear(UniaxialMaterialBase):
         self._parameters = [self.op_type, self._tag, self.ep1, self.ep2, self.eps_p2]
         if self.en1 is not None:
             self._parameters += [self.en1, self.en2, self.eps_n2]
-        self.to_process()
+        self.to_process(osi)
 
 
 class MultiLinear(UniaxialMaterialBase):
@@ -53,5 +53,5 @@ class MultiLinear(UniaxialMaterialBase):
         osi.n_mats += 1
         self._tag = osi.n_mats
         self._parameters = [self.op_type, self._tag, self.points]
-        self.to_process()
+        self.to_process(osi)
 

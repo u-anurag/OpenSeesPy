@@ -17,4 +17,4 @@ class ForceBeamColumn(ElementBase):
 
         self._parameters = [self.op_type, self._tag, *[self.node_i.tag, self.node_j.tag], self.transf.tag,
                             self.integration.tag, self.max_inter, self.tol, self.mass]
-        self.to_process()
+        self.to_process(osi)

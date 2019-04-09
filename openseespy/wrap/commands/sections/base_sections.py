@@ -27,7 +27,7 @@ class Elastic(SectionBase):
             self._parameters.append(self.j_sect)
             self._parameters.append(self.alpha_y)
             self._parameters.append(self.alpha_z)
-        self.to_process()
+        self.to_process(osi)
 
 
 class Uniaxial(SectionBase):
@@ -39,4 +39,4 @@ class Uniaxial(SectionBase):
         osi.n_sects += 1
         self._tag = osi.n_sects
         self._parameters = [self.op_type, self._tag, self.mat.tag, self.quantity]
-        self.to_process()
+        self.to_process(osi)

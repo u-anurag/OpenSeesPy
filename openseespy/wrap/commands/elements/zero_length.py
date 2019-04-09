@@ -35,4 +35,4 @@ class ZeroLength(ElementBase):
         self._parameters.append(dirs)
         self._parameters.append("-doRayleigh")
         self._parameters.append(self.r_flag)
-        self.to_process()
+        self.to_process(osi)

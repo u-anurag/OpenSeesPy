@@ -27,7 +27,7 @@ class Elastic(UniaxialMaterialBase):
         osi.n_mats += 1
         self._tag = osi.n_mats
         self._parameters = [self.type, self._tag, self.e_mod, self.eta, self.e_mod_comp]
-        self.to_process()
+        self.to_process(osi)
 
 
 class ElasticPP(UniaxialMaterialBase):
@@ -59,7 +59,7 @@ class ElasticPP(UniaxialMaterialBase):
         osi.n_mats += 1
         self._tag = osi.n_mats
         self._parameters = [self.type, self._tag, self.e_mod, self.epsy_p, self.epsy_n, self.eps0]
-        self.to_process()
+        self.to_process(osi)
 
 
 class PySimple1(UniaxialMaterialBase):
@@ -96,7 +96,7 @@ class PySimple1(UniaxialMaterialBase):
         osi.n_mats += 1
         self._tag = osi.n_mats
         self._parameters = [self.type, self._tag, self.p_ult, self.y50, self.cd, self.c]
-        self.to_process()
+        self.to_process(osi)
 
 
 class PyLiq1(UniaxialMaterialBase):
@@ -150,4 +150,4 @@ class PyLiq1(UniaxialMaterialBase):
             self._parameters.append(self.ele1)
             if self.ele2 is None:
                 self._parameters.append(self.ele2)
-        self.to_process()
+        self.to_process(osi)

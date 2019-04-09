@@ -31,9 +31,9 @@ class Steel01(UniaxialMaterialBase):
         self.a4 = a4
         osi.n_mats += 1
         self._tag = osi.n_mats
-        self._parameters = [self.op_type, self._tag, self.fy, self.e0, self.b]
+        self._parameters = [self.op_type, self.tag, self.fy, self.e0, self.b]
         for a in self.a_values:
             if a is None:
                 break
             self._parameters.append(a)
-        self.to_process()
+        self.to_process(osi)
