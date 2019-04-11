@@ -6,7 +6,7 @@ import eqsig
 
 import numpy as np
 
-from openseespy import opensees as opy  # private package
+from openseespy import opensees as opy
 import openseespy.wrap.static as opc
 import openseespy.wrap as opw
 
