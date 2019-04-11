@@ -7,3 +7,4 @@ dist
 venv/
 .pytest-cache/
 .cache/
+examples/.ipynb_checkpoints/
