@@ -6,7 +6,7 @@ class Viscous(UniaxialMaterialBase):
 
     def __init__(self, osi, c, alpha):
         self.c = c
-        self.alpha = alpha
+        self.alpha = float(alpha)
         osi.n_mats += 1
         self._tag = osi.n_mats
         self._parameters = [self.op_type, self._tag, self.c, self.alpha]

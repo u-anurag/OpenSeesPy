@@ -30,8 +30,8 @@ class PressureIndependMultiYield(NDMaterial):
                             self.cohesi, self.peak_shear_stra, self.friction_ang, self.ref_press, self.press_depend_coe]
 
         if self.yield_surf is not None:
-            self._parameters.append(-self.no_yield_surf)  # from docs 'add a minus sign in front of noYieldSurf'
-            self._parameters += self.yield_surf
+            self._parameters.append(self.no_yield_surf)  # from docs 'add a minus sign in front of noYieldSurf'
+            self._parameters += list(self.yield_surf)
 
         else:
             # self._keyword_args['noYieldSurf'] = self.no_yield_surf

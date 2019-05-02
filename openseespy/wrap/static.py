@@ -10,3 +10,6 @@ V_Y = 'Vy'
 M_Y = 'My'
 V_Z = 'Vz'
 TORSION = 'T'
+
+PLANE_STRAIN = "PlaneStrain"
+PLANE_STRESS = "PlaneStress"
