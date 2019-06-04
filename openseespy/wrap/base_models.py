@@ -21,10 +21,13 @@ class OpenseesObject(object):
     def to_process(self, osi):
         if osi.state == 0:
             self.to_opensees()
-        elif osi.state == 1:
+        if osi.state == 1:
             osi.to_commands(self.to_commands())
-        elif osi.state == 1:
+        elif osi.state == 2:
             osi.to_dict(self)
+        elif osi.state == 3:
+            osi.to_commands(self.to_commands())
+            self.to_opensees()
 
     def to_opensees(self):
         try:
@@ -53,6 +56,10 @@ class OpenseesObject(object):
         for i, e in enumerate(self.parameters):
             if isinstance(e, str):
                 e = "'%s'" % e
+            elif isinstance(e, float):
+                e = '%.6g' % e
+                if '.' not in e and 'e' not in e:
+                    e += '.0'
             para.append(str(e))
             if i > 40:  # avoid verbose print output
                 break

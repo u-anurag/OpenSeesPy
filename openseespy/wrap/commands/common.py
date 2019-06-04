@@ -52,3 +52,21 @@ class Fix(OpenseesObject):
         self._parameters = [self.node.tag, self.x, self.y, self.z_rot]
         self.to_process(osi)
 
+
+def analyze(osi, num_inc=1, dt=0.1, dt_min=None, dt_max=None, jd=None):
+    if dt_min is None:
+        parameters = [int(num_inc), float(dt)]
+    else:
+        parameters = [int(num_inc), float(dt), dt_min, dt_max, jd]
+    opy.analyze(*parameters)
+    if osi.state in [1, 3]:
+        para = []
+        for i, e in enumerate(parameters):
+            if isinstance(e, str):
+                e = "'%s'" % e
+            para.append(str(e))
+            if i > 40:  # avoid verbose print output
+                break
+        p_str = ', '.join(para)
+        osi.to_commands('opy.analyze(%s)' % p_str)
+    return 0

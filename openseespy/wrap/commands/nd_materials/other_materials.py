@@ -6,7 +6,7 @@ class PressureIndependMultiYield(NDMaterial):
     op_type = "PressureIndependMultiYield"
 
     def __init__(self, osi,  nd, rho, ref_shear_modul, ref_bulk_modul, cohesi, peak_shear_stra, friction_ang=0.,
-                 ref_press=100., press_depend_coe=0., no_yield_surf=20, yield_surf=None):
+                 ref_press=100., press_depend_coe=0., no_yield_surf=20, strains=None, ratios=None):
         """
         PressureIndependMultiYield material
         """
@@ -21,6 +21,12 @@ class PressureIndependMultiYield(NDMaterial):
         self.press_depend_coe = float(press_depend_coe)
         assert no_yield_surf < 40
         self.no_yield_surf = int(no_yield_surf)
+        if strains is not None:
+            assert len(strains) == len(ratios)
+            yield_surf = []
+            for i in range(len(strains)):
+                yield_surf.append(ratios[i])
+                yield_surf.append(strains[i])
         self.yield_surf = yield_surf
 
         osi.n_mats += 1

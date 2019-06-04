@@ -28,6 +28,9 @@ class OpenseesInstance(object):
             self.dict['ndm'] = dimensions
             self.dict['ndf'] = node_dofs
             # base_types = ['node', 'element', 'section', 'uniaxial_material']
+        elif state == 3:
+            self.commands.append('opy.wipe()')
+            self.commands.append("opy.model('basic', '-ndm', {0}, '-ndf', {1})".format(dimensions, node_dofs))
 
     def to_commands(self, os_command):
         self.commands.append(os_command)
