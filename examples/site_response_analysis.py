@@ -142,7 +142,7 @@ def site_response(sp, asig):
     opy.pattern('UniformExcitation', pattern_tag_dynamic, opw.static.X, '-accel', load_tag_dynamic)
 
     # set damping based on first eigen mode
-    xi = 0.05
+    xi = 0.01
     angular_freq = opy.eigen('-fullGenLapack', 1) ** 0.5
     beta_k = 2 * xi / angular_freq
     opw.rayleigh.Rayleigh(osi, alpha_m=0.0, beta_k=beta_k, beta_k_init=0.0, beta_k_comm=0.0)
@@ -198,7 +198,7 @@ def run():
     assert np.isclose(vs, sl.get_shear_vel(saturated=False))
     soil_profile = sm.SoilProfile()
     soil_profile.add_layer(0, sl)
-    soil_profile.height = 2.0
+    soil_profile.height = 10.0
     from tests.conftest import TEST_DATA_DIR
 
     record_path = TEST_DATA_DIR
@@ -207,8 +207,18 @@ def run():
     rec = np.loadtxt(record_path + record_filename)
     acc_signal = eqsig.AccSignal(rec, dt)
     outputs = site_response(soil_profile, acc_signal)
+    resp_dt = outputs['time'][2] - outputs['time'][1]
+    surf_sig = eqsig.AccSignal(outputs['rel_accel'], resp_dt)  # TODO: need to get absolute acceleration
     import matplotlib.pyplot as plt
-    plt.plot(outputs['time'], outputs['rel_disp'])
+    bf, sps = plt.subplots(nrows=3)
+    sps[0].plot(acc_signal.time, acc_signal.values)
+    sps[0].plot(surf_sig.time, surf_sig.values)
+
+    sps[1].plot(acc_signal.fa_frequencies, abs(acc_signal.fa_spectrum))
+    sps[1].plot(surf_sig.fa_frequencies, abs(surf_sig.fa_spectrum))
+    sps[1].set_xlim([0, 20])
+    h = surf_sig.smooth_fa_spectrum / acc_signal.smooth_fa_spectrum
+    sps[2].plot(surf_sig.smooth_fa_frequencies, h)
     plt.show()
     print(outputs)
 
