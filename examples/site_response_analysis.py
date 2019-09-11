@@ -125,32 +125,29 @@ def site_response(sp, asig):
     opw.analyze(osi, 10, 500.)
     # reset time and analysis
     opw.set_time(osi, 0.0)
+    opy.setTime(0.0)
     opw.wipe_analysis(osi)
 
     with open('temp.py', 'w') as ofile:
         ofile.write('from openseespy import opensees as opy\n')
         ofile.write('\n'.join(osi.commands))
 
-    # WIP
-
-    return
 
     # Define the dynamic analysis
     load_tag_dynamic = 1
     pattern_tag_dynamic = 1
 
-    values = list(-1 * motion)  # should be negative
-    opy.timeSeries('Path', load_tag_dynamic, '-dt', dt, '-values', *values)
+    values = list(-1 * asig.values)  # should be negative
+    opy.timeSeries('Path', load_tag_dynamic, '-dt', asig.dt, '-values', *values)
     opy.pattern('UniformExcitation', pattern_tag_dynamic, opw.static.X, '-accel', load_tag_dynamic)
 
     # set damping based on first eigen mode
+    xi = 0.05
     angular_freq = opy.eigen('-fullGenLapack', 1) ** 0.5
     beta_k = 2 * xi / angular_freq
     opw.rayleigh.Rayleigh(osi, alpha_m=0.0, beta_k=beta_k, beta_k_init=0.0, beta_k_comm=0.0)
 
     # Run the dynamic analysis
-
-    opy.wipeAnalysis()
 
     opw.algorithms.Newton(osi)
     opy.system('SparseGeneral')
@@ -160,7 +157,7 @@ def site_response(sp, asig):
     opy.analysis('Transient')
 
     opw.test_checks.EnergyIncr(osi, tol=1.0e-10, max_iter=10)
-    analysis_time = (len(values) - 1) * dt
+    analysis_time = (len(values) - 1) * asig.dt
     analysis_dt = 0.001
     outputs = {
         "time": [],
@@ -169,16 +166,18 @@ def site_response(sp, asig):
         "rel_vel": [],
         "force": []
     }
+    print(analysis_time)
+    print(opy.getTime())
 
     while opy.getTime() < analysis_time:
         curr_time = opy.getTime()
         opy.analyze(1, analysis_dt)
         outputs["time"].append(curr_time)
-        outputs["rel_disp"].append(opy.nodeDisp(top_node.tag, opw.static.X))
-        outputs["rel_vel"].append(opy.nodeVel(top_node.tag, opw.static.X))
-        outputs["rel_accel"].append(opy.nodeAccel(top_node.tag, opw.static.X))
+        outputs["rel_disp"].append(opy.nodeDisp(nd["R0L"].tag, opw.static.X))
+        outputs["rel_vel"].append(opy.nodeVel(nd["R0L"].tag, opw.static.X))
+        outputs["rel_accel"].append(opy.nodeAccel(nd["R0L"].tag, opw.static.X))
         opy.reactions()
-        outputs["force"].append(-opy.nodeReaction(bot_node.tag, opw.static.X))  # Negative since diff node
+        # outputs["force"].append(-opy.nodeReaction(bot_node.tag, opw.static.X))  # Negative since diff node
     opy.wipe()
     for item in outputs:
         outputs[item] = np.array(outputs[item])
@@ -207,8 +206,11 @@ def run():
     dt = 0.01
     rec = np.loadtxt(record_path + record_filename)
     acc_signal = eqsig.AccSignal(rec, dt)
-    site_response(soil_profile, acc_signal)
-
+    outputs = site_response(soil_profile, acc_signal)
+    import matplotlib.pyplot as plt
+    plt.plot(outputs['time'], outputs['rel_disp'])
+    plt.show()
+    print(outputs)
 
 if __name__ == '__main__':
     run()
