@@ -116,7 +116,17 @@ def site_response(sp, asig):
 
     opw.analyses.Transient(osi)
     # opy.analyze(10, 5.0e3)
-    opw.analyze(osi, 10, 2.)
+    opw.analyze(osi, 10, 500.)
+
+    for i in range(len(soil_mats)):
+        print(i)
+        opw.update_material_stage(osi, soil_mats[i], 1)
+        # opy.updateMaterialStage('-material', soil_mats[i].tag, '-stage', 1)
+    opw.analyze(osi, 10, 500.)
+    # reset time and analysis
+    opw.set_time(osi, 0.0)
+    opw.wipe_analysis(osi)
+
     with open('temp.py', 'w') as ofile:
         ofile.write('from openseespy import opensees as opy\n')
         ofile.write('\n'.join(osi.commands))

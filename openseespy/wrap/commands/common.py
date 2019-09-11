@@ -70,3 +70,15 @@ def analyze(osi, num_inc=1, dt=0.1, dt_min=None, dt_max=None, jd=None):
         p_str = ', '.join(para)
         osi.to_commands('opy.analyze(%s)' % p_str)
     return 0
+
+
+def set_time(osi, time):
+    osi.to_commands('opy.setTime(%s)' % str(time))
+
+
+def wipe_analysis(osi):
+    osi.to_commands('opy.wipeAnalysis')
+
+
+def update_material_stage(osi, material, stage):
+    osi.to_commands("opy.updateMaterialStage('-material', {0}, '-stage', {1})".format(material.tag, stage))
