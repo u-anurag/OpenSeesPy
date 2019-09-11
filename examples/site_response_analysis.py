@@ -128,11 +128,6 @@ def site_response(sp, asig):
     opy.setTime(0.0)
     opw.wipe_analysis(osi)
 
-    with open('temp.py', 'w') as ofile:
-        ofile.write('from openseespy import opensees as opy\n')
-        ofile.write('\n'.join(osi.commands))
-
-
     # Define the dynamic analysis
     load_tag_dynamic = 1
     pattern_tag_dynamic = 1
@@ -168,6 +163,10 @@ def site_response(sp, asig):
     }
     print(analysis_time)
     print(opy.getTime())
+
+    with open('temp.py', 'w') as ofile:
+        ofile.write('from openseespy import opensees as opy\n')
+        ofile.write('\n'.join(osi.commands))
 
     while opy.getTime() < analysis_time:
         curr_time = opy.getTime()
