@@ -131,7 +131,8 @@ def test_sdof():
     run = 1
     if run:
         import matplotlib.pyplot as plt
-        plt.plot(ux_opensees_elastic)
+        plt.plot(outputs_elastic["time"], outputs_elastic["rel_disp"])
+        plt.plot(outputs["time"], outputs["rel_disp"])
         plt.show()
 
 

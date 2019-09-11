@@ -97,8 +97,8 @@ def site_response(sp, asig):
 
             nd["R{0}L".format(i + 1)],
             nd["R{0}R".format(i + 1)],
-            nd["R{0}L".format(i)],
-            nd["R{0}R".format(i)]
+            nd["R{0}R".format(i)],
+            nd["R{0}L".format(i)]
         ]
         ele = opw.elements.Quad(osi, nodes, ele_thick, opw.static.PLANE_STRAIN, mat, b2=grav * unit_masses[i])
 
