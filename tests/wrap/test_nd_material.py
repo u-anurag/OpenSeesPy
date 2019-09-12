@@ -13,5 +13,5 @@ def test_can_set_PressureIndependMultiYield():
     ref_bulk_modul = 60e6
     cohesi = 60e3
     peak_shear_stra = 0.02
-    opw.nd_materials.PressureIndependMultiYield(osi, nd, rho, ref_shear_modul, ref_bulk_modul,
-                                                               cohesi, peak_shear_stra)
+    opw.nd_material.PressureIndependMultiYield(osi, nd, rho, ref_shear_modul, ref_bulk_modul,
+                                               cohesi, peak_shear_stra)

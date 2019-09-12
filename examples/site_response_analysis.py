@@ -54,12 +54,12 @@ def site_response(sp, asig):
     # Define nodes and set boundary conditions for simple shear deformation
     # Start at top and build down?
     nd = OrderedDict()
-    nd["R0L"] = opw.nodes.Node(osi, 0, 0)  # row 0 left
-    nd["R0R"] = opw.nodes.Node(osi, ele_width, 0)
+    nd["R0L"] = opw.node.Node(osi, 0, 0)  # row 0 left
+    nd["R0R"] = opw.node.Node(osi, ele_width, 0)
     for i in range(1, n_node_rows):
         # Establish left and right nodes
-        nd["R{0}L".format(i)] = opw.nodes.Node(osi, 0, -node_depths[i])
-        nd["R{0}R".format(i)] = opw.nodes.Node(osi, ele_width, -node_depths[i], x_mass=0.0001) # TODO: why is mass needed for stability?
+        nd["R{0}L".format(i)] = opw.node.Node(osi, 0, -node_depths[i])
+        nd["R{0}R".format(i)] = opw.node.Node(osi, ele_width, -node_depths[i], x_mass=0.0001) # TODO: why is mass needed for stability?
         # set x and y dofs equal for left and right nodes
         if 1 == 0:
             if i != n_node_rows - 1:  # TODO: why not
@@ -70,8 +70,8 @@ def site_response(sp, asig):
     opw.Fix(osi, nd["R{0}R".format(n_node_rows - 1)], opw.static.FREE, opw.static.FIXED, opw.static.FREE)
 
     # Define dashpot nodes
-    dashpot_node_l = opw.nodes.Node(osi, 0, -node_depths[-1])
-    dashpot_node_2 = opw.nodes.Node(osi, 0, -node_depths[-1])
+    dashpot_node_l = opw.node.Node(osi, 0, -node_depths[-1])
+    dashpot_node_2 = opw.node.Node(osi, 0, -node_depths[-1])
     opw.Fix(osi, dashpot_node_l,  opw.static.FIXED, opw.static.FIXED, opw.static.FREE)
     opw.Fix(osi, dashpot_node_2, opw.static.FREE, opw.static.FIXED, opw.static.FREE)
 
@@ -86,13 +86,13 @@ def site_response(sp, asig):
     ref_strain = 0.005
     rats = 1. / (1 + (strains / ref_strain) ** 0.91)
     for i in range(len(thicknesses)):
-        mat = opw.nd_materials.PressureIndependMultiYield(osi, 2, unit_masses[i], g_mods[i],
-                                                           bulk_mods[i], cohesions[i], strain_peaks[i],
-                                                           phis[i], press_depend_coe=0.0, no_yield_surf=16,
-                                                        strains=strains, ratios=rats)
+        mat = opw.nd_material.PressureIndependMultiYield(osi, 2, unit_masses[i], g_mods[i],
+                                                         bulk_mods[i], cohesions[i], strain_peaks[i],
+                                                         phis[i], press_depend_coe=0.0, no_yield_surf=16,
+                                                         strains=strains, ratios=rats)
         soil_mats.append(mat)
 
-        # def elements
+        # def element
         nodes = [
 
             nd["R{0}L".format(i + 1)],
@@ -100,21 +100,21 @@ def site_response(sp, asig):
             nd["R{0}R".format(i)],
             nd["R{0}L".format(i)]
         ]
-        ele = opw.elements.Quad(osi, nodes, ele_thick, opw.static.PLANE_STRAIN, mat, b2=grav * unit_masses[i])
+        ele = opw.element.Quad(osi, nodes, ele_thick, opw.static.PLANE_STRAIN, mat, b2=grav * unit_masses[i])
 
     # define material and element for viscous dampers
     dashpot_c = ele_width * unit_masses[-1] * shear_vels[-1]
-    dashpot_mat = opw.uniaxial_materials.Viscous(osi, dashpot_c, alpha=1.)
-    dashpot_ele = opw.elements.ZeroLength(osi, dashpot_node_l, dashpot_node_2, mat_x=dashpot_mat)
+    dashpot_mat = opw.uniaxial_material.Viscous(osi, dashpot_c, alpha=1.)
+    dashpot_ele = opw.element.ZeroLength(osi, dashpot_node_l, dashpot_node_2, mat_x=dashpot_mat)
 
-    opw.constraints.Transformation(osi)
-    opw.test_checks.NormDispIncr(osi, tol=1.0e-5, max_iter=30, p_flag=0)
-    opw.algorithms.Newton(osi)
-    opw.numberers.RCM(osi)
-    opw.systems.ProfileSPD(osi)
-    opw.integrators.Newmark(osi, newmark_gamma, newmark_beta)
+    opw.constraint.Transformation(osi)
+    opw.test_check.NormDispIncr(osi, tol=1.0e-5, max_iter=30, p_flag=0)
+    opw.algorithm.Newton(osi)
+    opw.numberer.RCM(osi)
+    opw.system.ProfileSPD(osi)
+    opw.integrator.Newmark(osi, newmark_gamma, newmark_beta)
 
-    opw.analyses.Transient(osi)
+    opw.analysis.Transient(osi)
     # opy.analyze(10, 5.0e3)
     opw.analyze(osi, 10, 500.)
 
@@ -142,14 +142,14 @@ def site_response(sp, asig):
     opw.rayleigh.Rayleigh(osi, alpha_m=0.0, beta_k=beta_k, beta_k_init=0.0, beta_k_comm=0.0)
 
     # Run the dynamic analysis
-    opw.algorithms.Newton(osi)
-    opw.systems.SparseGeneral(osi)
-    opw.numberers.RCM(osi)
-    opw.constraints.Transformation(osi)
-    opw.integrators.Newmark(osi, newmark_gamma, newmark_beta)
-    opw.analyses.Transient(osi)
+    opw.algorithm.Newton(osi)
+    opw.system.SparseGeneral(osi)
+    opw.numberer.RCM(osi)
+    opw.constraint.Transformation(osi)
+    opw.integrator.Newmark(osi, newmark_gamma, newmark_beta)
+    opw.analysis.Transient(osi)
 
-    opw.test_checks.EnergyIncr(osi, tol=1.0e-10, max_iter=10)
+    opw.test_check.EnergyIncr(osi, tol=1.0e-10, max_iter=10)
     analysis_time = (len(values) - 1) * asig.dt
     analysis_dt = 0.001
 

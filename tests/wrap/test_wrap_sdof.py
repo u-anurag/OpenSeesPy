@@ -22,8 +22,8 @@ def get_inelastic_response(mass, k_spring, f_yield, motion, dt, xi=0.05, r_post=
     osi = opw.OpenseesInstance(dimensions=2)
 
     # Establish nodes
-    bot_node = opw.nodes.Node(osi, 0, 0)
-    top_node = opw.nodes.Node(osi, 0, 0)
+    bot_node = opw.node.Node(osi, 0, 0)
+    top_node = opw.node.Node(osi, 0, 0)
 
     # Fix bottom node
     opy.fix(top_node.tag, opw.static.FREE, opw.static.FIXED, opw.static.FIXED)
@@ -35,10 +35,10 @@ def get_inelastic_response(mass, k_spring, f_yield, motion, dt, xi=0.05, r_post=
     opy.mass(top_node.tag, mass, 0., 0.)
 
     # Define material
-    bilinear_mat = opw.uniaxial_materials.Steel01(osi, fy=f_yield, e0=k_spring, b=r_post)
+    bilinear_mat = opw.uniaxial_material.Steel01(osi, fy=f_yield, e0=k_spring, b=r_post)
 
     # Assign zero length element, # Note: pass actual node and material objects into element
-    opw.elements.ZeroLength(osi, bot_node, top_node, mat_x=bilinear_mat, r_flag=1)
+    opw.element.ZeroLength(osi, bot_node, top_node, mat_x=bilinear_mat, r_flag=1)
 
     # Define the dynamic analysis
     load_tag_dynamic = 1
@@ -56,15 +56,18 @@ def get_inelastic_response(mass, k_spring, f_yield, motion, dt, xi=0.05, r_post=
     # Run the dynamic analysis
 
     opy.wipeAnalysis()
+    newmark_gamma = 0.5
+    newmark_beta = 0.25
 
-    opw.algorithms.Newton(osi)
-    opy.system('SparseGeneral')
-    opy.numberer('RCM')
-    opy.constraints('Transformation')
-    opy.integrator('Newmark', 0.5, 0.25)
-    opy.analysis('Transient')
+    opw.algorithm.Newton(osi)
+    opw.constraint.Transformation(osi)
+    opw.algorithm.Newton(osi)
+    opw.numberer.RCM(osi)
+    opw.system.SparseGeneral(osi)
+    opw.integrator.Newmark(osi, newmark_gamma, newmark_beta)
+    opw.analysis.Transient(osi)
 
-    opw.test_checks.EnergyIncr(osi, tol=1.0e-10, max_iter=10)
+    opw.test_check.EnergyIncr(osi, tol=1.0e-10, max_iter=10)
     analysis_time = (len(values) - 1) * dt
     analysis_dt = 0.001
     outputs = {

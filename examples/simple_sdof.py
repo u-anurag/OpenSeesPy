@@ -35,10 +35,10 @@ def get_inelastic_response(mass, k_spring, f_yield, motion, dt, xi=0.05, r_post=
     opw.Mass(osi, top_node, mass, 0., 0.)
 
     # Define material
-    bilinear_mat = opw.uniaxial_materials.Steel01(osi, fy=f_yield, e0=k_spring, b=r_post)
+    bilinear_mat = opw.uniaxial_material.Steel01(osi, fy=f_yield, e0=k_spring, b=r_post)
 
     # Assign zero length element, # Note: pass actual node and material objects into element
-    opw.elements.ZeroLength(osi, bot_node, top_node, mat_x=bilinear_mat, r_flag=1)
+    opw.element.ZeroLength(osi, bot_node, top_node, mat_x=bilinear_mat, r_flag=1)
 
     # Define the dynamic analysis
     load_tag_dynamic = 1
