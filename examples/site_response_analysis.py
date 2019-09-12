@@ -119,7 +119,6 @@ def site_response(sp, asig):
     opw.analyze(osi, 10, 500.)
 
     for i in range(len(soil_mats)):
-        print(i)
         opw.update_material_stage(osi, soil_mats[i], 1)
         # opy.updateMaterialStage('-material', soil_mats[i].tag, '-stage', 1)
     opw.analyze(osi, 10, 500.)
@@ -143,50 +142,38 @@ def site_response(sp, asig):
     opw.rayleigh.Rayleigh(osi, alpha_m=0.0, beta_k=beta_k, beta_k_init=0.0, beta_k_comm=0.0)
 
     # Run the dynamic analysis
-
     opw.algorithms.Newton(osi)
-    opy.system('SparseGeneral')
-    opy.numberer('RCM')
-    opy.constraints('Transformation')
-    opy.integrator('Newmark', 0.5, 0.25)
-    opy.analysis('Transient')
+    opw.systems.SparseGeneral(osi)
+    opw.numberers.RCM(osi)
+    opw.constraints.Transformation(osi)
+    opw.integrators.Newmark(osi, newmark_gamma, newmark_beta)
+    opw.analyses.Transient(osi)
 
     opw.test_checks.EnergyIncr(osi, tol=1.0e-10, max_iter=10)
     analysis_time = (len(values) - 1) * asig.dt
     analysis_dt = 0.001
+
+    opw.recorder.NodeToFile(osi, 'sample_out.txt', node=nd["R0L"], dofs=[opw.static.X], mtype='accel')
+    na = opw.recorder.NodeToArrayCache(osi, node=nd["R0L"], dofs=[opw.static.X], mtype='accel')
+
+    while opy.getTime() < analysis_time:
+        opy.analyze(1, analysis_dt)
+    opy.wipe()
     outputs = {
-        "time": [],
+        "time": np.arange(0, analysis_time, analysis_dt),
         "rel_disp": [],
-        "rel_accel": [],
+        "rel_accel": na.collect(),
         "rel_vel": [],
         "force": []
     }
-    print(analysis_time)
-    print(opy.getTime())
-
-    with open('temp.py', 'w') as ofile:
-        ofile.write('from openseespy import opensees as opy\n')
-        ofile.write('\n'.join(osi.commands))
-
-    while opy.getTime() < analysis_time:
-        curr_time = opy.getTime()
-        opy.analyze(1, analysis_dt)
-        outputs["time"].append(curr_time)
-        outputs["rel_disp"].append(opy.nodeDisp(nd["R0L"].tag, opw.static.X))
-        outputs["rel_vel"].append(opy.nodeVel(nd["R0L"].tag, opw.static.X))
-        outputs["rel_accel"].append(opy.nodeAccel(nd["R0L"].tag, opw.static.X))
-        opy.reactions()
-        # outputs["force"].append(-opy.nodeReaction(bot_node.tag, opw.static.X))  # Negative since diff node
-    opy.wipe()
-    for item in outputs:
-        outputs[item] = np.array(outputs[item])
 
     return outputs
 
 
 def run():
     sl = sm.Soil()
-    vs = 250.
+    # vs = 250.
+    vs = 100.
     unit_mass = 1700.0
     sl.g_mod = vs ** 2 * unit_mass
     sl.poissons_ratio = 0.0
@@ -197,7 +184,7 @@ def run():
     assert np.isclose(vs, sl.get_shear_vel(saturated=False))
     soil_profile = sm.SoilProfile()
     soil_profile.add_layer(0, sl)
-    soil_profile.height = 10.0
+    soil_profile.height = 8.0
     from tests.conftest import TEST_DATA_DIR
 
     record_path = TEST_DATA_DIR

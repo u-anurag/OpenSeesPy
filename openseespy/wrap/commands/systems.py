@@ -12,3 +12,12 @@ class ProfileSPD(SystemBase):
 
         self._parameters = [self.op_type]
         self.to_process(osi)
+
+
+class SparseGeneral(SystemBase):
+    op_type = "SparseGeneral"
+
+    def __init__(self, osi):
+
+        self._parameters = [self.op_type]
+        self.to_process(osi)
