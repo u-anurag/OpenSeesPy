@@ -1,5 +1,5 @@
 import eqsig
-from eqsig import duhamels
+from eqsig import sdof
 import numpy as np
 
 import openseespy.opensees as opy
@@ -22,8 +22,8 @@ def get_inelastic_response(mass, k_spring, f_yield, motion, dt, xi=0.05, r_post=
     osi = opw.OpenseesInstance(dimensions=2, state=0)
 
     # Establish nodes
-    bot_node = opw.nodes.Node(osi, 0, 0)
-    top_node = opw.nodes.Node(osi, 0, 0)
+    bot_node = opw.node.Node(osi, 0, 0)
+    top_node = opw.node.Node(osi, 0, 0)
 
     # Fix bottom node
     opw.Fix(osi, top_node, opw.static.FREE, opw.static.FIXED, opw.static.FIXED)
@@ -57,14 +57,14 @@ def get_inelastic_response(mass, k_spring, f_yield, motion, dt, xi=0.05, r_post=
 
     opy.wipeAnalysis()
 
-    opw.algorithms.Newton(osi)
+    opw.algorithm.Newton(osi)
     opy.system('SparseGeneral')
     opy.numberer('RCM')
     opy.constraints('Transformation')
     opy.integrator('Newmark', 0.5, 0.25)
     opy.analysis('Transient')
 
-    opw.test_checks.EnergyIncr(osi, tol=1.0e-10, max_iter=10)
+    opw.test_check.EnergyIncr(osi, tol=1.0e-10, max_iter=10)
     analysis_time = (len(values) - 1) * dt
     analysis_dt = 0.001
     outputs = {
@@ -76,8 +76,9 @@ def get_inelastic_response(mass, k_spring, f_yield, motion, dt, xi=0.05, r_post=
     }
 
     while opy.getTime() < analysis_time:
-        curr_time = opy.getTime()
+
         opy.analyze(1, analysis_dt)
+        curr_time = opy.getTime()
         outputs["time"].append(curr_time)
         outputs["rel_disp"].append(opy.nodeDisp(top_node.tag, opw.static.X))
         outputs["rel_vel"].append(opy.nodeVel(top_node.tag, opw.static.X))
@@ -112,7 +113,8 @@ def test_sdof():
     r_post = 0.0
 
     periods = np.array([period])
-    resp_u, resp_v, resp_a = duhamels.response_series(motion=rec, dt=dt, periods=periods, xi=xi)
+    resp_u, resp_v, resp_a = sdof.response_series(motion=rec, dt=dt, periods=periods, xi=xi)
+    duhamel_u = sdof.single_elastic_response(motion=rec, step=dt, period=period, xi=xi)
 
     k_spring = 4 * np.pi ** 2 * mass / period ** 2
     outputs = get_inelastic_response(mass, k_spring, f_yield, rec, dt, xi=xi, r_post=r_post)
@@ -121,18 +123,26 @@ def test_sdof():
     disp_inelastic_final = ux_opensees[-1]
 
     time = acc_signal.time
+
     acc_opensees_elastic = np.interp(time, outputs_elastic["time"], outputs_elastic["rel_accel"]) - rec
     ux_opensees_elastic = np.interp(time, outputs_elastic["time"], outputs_elastic["rel_disp"])
-    diff_disp = abs(np.sum(ux_opensees_elastic - resp_u[0]))
-    diff_acc = abs(np.sum(acc_opensees_elastic - resp_a[0]))
-    assert diff_disp < 1.0e-4
-    assert diff_acc < 5.0e-4
+    diff_disp = np.sum(abs(ux_opensees_elastic - resp_u[0]))
+    diff_acc = np.sum(abs(acc_opensees_elastic - resp_a[0]))
+    assert diff_disp < 1.0e-2, diff_disp
+    assert diff_acc < 5.0e-1, diff_acc
     assert np.isclose(disp_inelastic_final, 0.0186556)
     run = 1
     if run:
         import matplotlib.pyplot as plt
-        plt.plot(outputs_elastic["time"], outputs_elastic["rel_disp"])
-        plt.plot(outputs["time"], outputs["rel_disp"])
+        bf, sps = plt.subplots(nrows=3)
+        sps[0].plot(outputs_elastic["time"], outputs_elastic["rel_disp"])
+        sps[0].plot(time, resp_u[0], lw=0.7, c='r')
+        sps[0].plot(time, duhamel_u, lw=1, c='g', ls=':')
+        sps[0].plot(outputs["time"], outputs["rel_disp"])
+        sps[1].plot(outputs_elastic["time"], outputs_elastic["rel_vel"])
+        sps[1].plot(time, resp_v[0], lw=0.7, c='r')
+        sps[2].plot(time, acc_opensees_elastic)
+        sps[2].plot(time, resp_a[0], lw=0.7, c='r')
         plt.show()
 
 
