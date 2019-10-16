@@ -57,7 +57,7 @@ def get_inelastic_response(mass, k_spring, f_yield, motion, dt, xi=0.05, r_post=
     opy.pattern('UniformExcitation', pattern_tag_dynamic, opc.X, '-accel', load_tag_dynamic)
 
     # set damping based on first eigen mode
-    angular_freq = opy.eigen('-fullGenLapack', 1) ** 0.5
+    angular_freq = opy.eigen('-fullGenLapack', 1)[0] ** 0.5
     alpha_m = 0.0
     beta_k = 2 * xi / angular_freq
     beta_k_comm = 0.0

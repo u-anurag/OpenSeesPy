@@ -46,6 +46,19 @@ class NodeToArrayCache(RecorderBase):  # TODO: implement NodeToArray where data 
         return a
 
 
+class ElementToFile(RecorderBase):
+    op_type = "Element"
+
+    def __init__(self, osi, fname, element, material=None, args=None, nsd=8):
+        if args is None:
+            args = []
+        extra_pms = []
+        if material is not None:
+            extra_pms += ['material', material]
+        self._parameters = [self.op_type, '-file', fname, '-precision', nsd, '-ele', element.tag, *extra_pms, *args]
+        self.to_process(osi)
+
+
 class ElementToArrayCache(RecorderBase):  # TODO: implement ElementToArray where data saved to memory and loaded as array without collect
     op_type = "Element"
 
@@ -56,7 +69,7 @@ class ElementToArrayCache(RecorderBase):  # TODO: implement ElementToArray where
         if material is not None:
             extra_pms += ['material', material]
         self.tmpfname = tempfile.NamedTemporaryFile(delete=False).name
-        print(self.tmpfname)
+
         self._parameters = [self.op_type, '-file', self.tmpfname, '-precision', nsd, '-ele', element.tag, *extra_pms, *args]
         self.to_process(osi)
 
