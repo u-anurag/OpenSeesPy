@@ -51,14 +51,15 @@ def constructor(base_type, op_type, doc_str_pms, dtypes, defaults):
         if default is not None:
             pjoins.append(f'{pm}={default}')
         else:
-            pjoins.append('f{pm}')
+            pjoins.append(f'{pm}')
 
     pjoined = ', '.join(pjoins)
     para.append(f'    def __init__(self, osi, {pjoined}):')
     for i, pm in enumerate(pms):
-        if dtypes[i] == 'float':
+        dtype = pms[pm][1]
+        if dtype == 'float':
             para.append(w8 + f'self.{pm} = float({pm})')
-        elif dtypes[i] == 'int':
+        elif dtype == 'int':
             para.append(w8 + f'self.{pm} = int({pm})')
         else:
             para.append(w8 + f'self.{pm} = {pm}')
@@ -74,7 +75,11 @@ def constructor(base_type, op_type, doc_str_pms, dtypes, defaults):
     para.append(w4 + 'osi = opw.OpenseesInstance(dimensions=2)')
     pjoins = []
     for i, pm in enumerate(pms):
-        if dtypes[i] == 'float':
+        default = pms[pm][0]
+        dtype = pms[pm][1]
+        if default is not None:
+            pjoins.append(f'{pm}={default}')
+        elif dtype == 'float':
             pjoins.append(f'{pm}=1.0')
         else:
             pjoins.append(f'{pm}=1')
@@ -136,4 +141,4 @@ def parse_mat_file(ffp):
 if __name__ == '__main__':
     # parse_mat_file('BoucWen.rst')
     # parse_mat_file('Bond_SP01.rst')
-    parse_mat_file('BilinearOilDamper.rst')
+    parse_mat_file('InitStrainMaterial.rst')
