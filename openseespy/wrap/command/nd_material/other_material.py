@@ -1,4 +1,5 @@
 from openseespy.wrap.command.nd_material.base_material import NDMaterial
+import numpy as np
 
 
 class PressureIndependMultiYield(NDMaterial):
@@ -145,6 +146,53 @@ class PM4Sand(NDMaterial):
                             self.emax, self.emin, self.nb, self.nd, self.ado, self.z_max, self.cz, self.ce, self.phic,
                             self.nu, self.cgd, self.cdr, self.ckaf, self.big_q, self.big_r, self.m, self.fsed_min,
                             self.p_sedo]
+
+        self.to_process(osi)
+
+
+class StressDensityModel(NDMaterial):
+    op_type = "StressDensityModel"
+
+    def __init__(self, osi, den, e_init, big_a, n, nu, a1, b1, a2, b2, a3, b3, fd, mu_not, mu_cyc, sc, big_m, p_atm,
+                 ssls=None, hsl=None, ps=None):
+        self.osi = osi
+        self.den = float(den)
+        self.e_init = float(e_init)
+        self.big_a = float(big_a)
+        self.n = float(n)
+        self.nu = float(nu)
+        self.a1 = float(a1)
+        self.b1 = float(b1)
+        self.a2 = float(a2)
+        self.b2 = float(b2)
+        self.a3 = float(a3)
+        self.b3 = float(b3)
+        self.fd = float(fd)
+        self.mu_not = float(mu_not)
+        self.mu_cyc = float(mu_cyc)
+        self.sc = float(sc)
+        self.big_m = float(big_m)
+        self.p_atm = float(p_atm)
+        if ssls is None:
+            self.ssls = np.array([1.0, 10.0, 30.0, 50.0, 100.0, 200.0, 400.0, 400.0, 400.0, 400.0])
+        else:
+            assert len(ssls) == 10
+            self.ssls = np.array(ssls, dtype=np.float)
+        if hsl is None:
+            self.hsl = 0.895
+        else:
+            self.hsl = float(hsl)
+        if ps is None:
+            self.ps = np.array([0.877, 0.877, 0.873, 0.870, 0.860, 0.850, 0.833, 0.833, 0.833, 0.833])
+        else:
+            self.ps = np.array(ps, dtype=np.float)
+
+        osi.n_mats += 1
+        self._tag = osi.n_mats
+
+        self._parameters = [self.osi, self.den, self.e_init, self.big_a, self.n, self.nu, self.a1, self.b1, self.a2,
+                            self.b2, self.a3, self.b3, self.fd, self.mu_not, self.mu_cyc, self.sc, self.big_m,
+                            self.p_atm, *self.ssls, self.hsl, *self.ps]
 
         self.to_process(osi)
 
