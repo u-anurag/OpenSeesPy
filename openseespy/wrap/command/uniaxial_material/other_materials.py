@@ -69,3 +69,18 @@ class BoucWen(UniaxialMaterialBase):
         self._tag = osi.mats
         self._parameters = [self.op_type, self._tag, self.alpha, self.ko, self.n, self.gamma, self.ao, self.deltanu]
         self.to_process(osi)
+
+
+class BondSP01(UniaxialMaterialBase):
+
+    def __init__(self, osi, fy, sy, fu, su, b, big_r):
+        self.fy = int(fy)
+        self.sy = float(sy)
+        self.fu = float(fu)
+        self.su = float(su)
+        self.b = float(b)
+        self.big_r = float(big_r)
+        osi.n_mats += 1
+        self._tag = osi.mats
+        self._parameters = [self.op_type, self._tag, self.fy, self.sy, self.fu, self.su, self.b, self.big_r]
+        self.to_process(osi)
