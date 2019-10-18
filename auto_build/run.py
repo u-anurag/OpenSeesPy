@@ -14,11 +14,18 @@ def clean_params(params):
     pms = OrderedDict()
     for pm in params:
         new_pm = pm
+        dtype_is_obj = False
         if len(pm) == 1 and pm.istitle():
             new_pm = 'big_' + pm.lower()
-        # pms.append(pm.lower())
-        new_pm = convert_camel_to_snake(pm)
+        else:
+            new_pm = convert_camel_to_snake(pm)
+
+        if len(new_pm) > 4 and new_pm[-4:] == '_tag':
+            new_pm = new_pm[:-4]
+            dtype_is_obj = True
         pms[new_pm] = params[pm]
+        if dtype_is_obj:
+            pms[new_pm][1] = 'obj'
     # if 'tag' in pms[0]:
     #     pms = pms[1:]
     return pms
@@ -41,6 +48,7 @@ def constructor(base_type, op_type, doc_str_pms, dtypes, defaults):
     base_class_name = base_type[0].capitalize() + base_type[1:]
     para.append(f'class {op_class_name}({base_class_name}Base):')
     para.append('')
+    assert len(doc_str_pms) == len(defaults), (len(doc_str_pms), len(defaults))
     for i, pm in enumerate(doc_str_pms):
         defaults[pm].append(dtypes[i])
 
@@ -65,11 +73,20 @@ def constructor(base_type, op_type, doc_str_pms, dtypes, defaults):
             para.append(w8 + f'self.{pm} = {pm}')
     para.append(w8 + 'osi.n_mats += 1')
     para.append(w8 + 'self._tag = osi.mats')
-    para.append(w8 + 'self._parameters = [self.op_type, self._tag, self.%s]' % (', self.'.join(pms)))
+    pjoins = []
+    for pm in pms:
+        dtype = pms[pm][1]
+        if dtype == 'obj':
+            pjoins.append(f'{pm}.tag')
+        else:
+            pjoins.append(pm)
+    para.append(w8 + 'self._parameters = [self.op_type, self._tag, self.%s]' % (', self.'.join(pjoins)))
     para.append(w8 + 'self.to_process(osi)')
 
     low_op_name = convert_camel_to_snake(op_class_name)
     low_base_name = convert_camel_to_snake(base_class_name)
+
+    # Build test
     para.append('')
     para.append(f'def test_{low_op_name}():')
     para.append(w4 + 'osi = opw.OpenseesInstance(dimensions=2)')
@@ -81,6 +98,8 @@ def constructor(base_type, op_type, doc_str_pms, dtypes, defaults):
             pjoins.append(f'{pm}={default}')
         elif dtype == 'float':
             pjoins.append(f'{pm}=1.0')
+        elif dtype == 'obj':
+            pjoins.append(f'{pm}=obj')
         else:
             pjoins.append(f'{pm}=1')
     pjoint = ', '.join(pjoins)
@@ -105,13 +124,15 @@ def parse_mat_file(ffp):
             continue
         res = re.search(pname_pat, line)
         if res:
-            print('pname: ', res.group()[2:-2])
-            doc_str_pms.append(res.group()[2:-2])
-
+            ei = line.find('|')
             dtype_res = re.search(dtype_pat, line)
             print(dtype_res.group())
             dtype = dtype_res.group()[1:-1]
-            dtypes.append(dtype)
+
+            res = re.findall(pname_pat, line[:ei])
+            for pm in res:
+                doc_str_pms.append(pm)
+                dtypes.append(dtype)
         if base_type is None and '.. function:: ' in line:
             print(line)
             base_type = line.split('.. function:: ')[-1]
@@ -140,5 +161,5 @@ def parse_mat_file(ffp):
 
 if __name__ == '__main__':
     # parse_mat_file('BoucWen.rst')
-    # parse_mat_file('Bond_SP01.rst')
-    parse_mat_file('InitStrainMaterial.rst')
+    parse_mat_file('Bond_SP01.rst')
+    # parse_mat_file('InitStrainMaterial.rst')
