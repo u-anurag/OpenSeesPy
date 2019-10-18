@@ -1,6 +1,8 @@
 import docutils.frontend
 import docutils.parsers.rst
 import re
+from collections import OrderedDict
+
 
 w4 = '    '
 w8 = '        '
@@ -9,14 +11,16 @@ dtype_pat = '\|([A-Za-z0-9_\./\\-]*)\|'
 optype_pat = "\'([A-Za-z0-9_\./\\-]*)\'"
 
 def clean_params(params):
-    pms = []
+    pms = OrderedDict()
     for pm in params:
+        new_pm = pm
         if len(pm) == 1 and pm.istitle():
-            pm = 'big_' + pm.lower()
+            new_pm = 'big_' + pm.lower()
         # pms.append(pm.lower())
-        pms.append(convert_camel_to_snake(pm))
-    if 'tag' in pms[0]:
-        pms = pms[1:]
+        new_pm = convert_camel_to_snake(pm)
+        pms[new_pm] = params[pm]
+    # if 'tag' in pms[0]:
+    #     pms = pms[1:]
     return pms
 
 
@@ -25,20 +29,31 @@ def convert_name_to_class_name(name):
     name = name.replace('_', '')
     return name
 
+
 def convert_camel_to_snake(name):
     s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
 
-def constructor(base_type, op_type, params, dtypes):
+
+def constructor(base_type, op_type, doc_str_pms, dtypes, defaults):
     para = []
     op_class_name = convert_name_to_class_name(op_type)
     base_class_name = base_type[0].capitalize() + base_type[1:]
     para.append(f'class {op_class_name}({base_class_name}Base):')
     para.append('')
-    # pms = [pm.lower() for pm in params]
-    pms = clean_params(params)
+    for i, pm in enumerate(doc_str_pms):
+        defaults[pm].append(dtypes[i])
 
-    pjoined = ', '.join(pms)
+    pms = clean_params(defaults)
+    pjoins = []
+    for pm in pms:
+        default = pms[pm][0]
+        if default is not None:
+            pjoins.append(f'{pm}={default}')
+        else:
+            pjoins.append('f{pm}')
+
+    pjoined = ', '.join(pjoins)
     para.append(f'    def __init__(self, osi, {pjoined}):')
     for i, pm in enumerate(pms):
         if dtypes[i] == 'float':
@@ -67,11 +82,13 @@ def constructor(base_type, op_type, params, dtypes):
     para.append(w4 + f'opw.{low_base_name}.{op_class_name}(osi, {pjoint})')
     return '\n'.join(para)
 
-def parse_file(ffp):
+
+def parse_mat_file(ffp):
     a = open(ffp)
     lines = a.read().split('\n')
-    params = []
+    doc_str_pms = []
     dtypes = []
+    defaults = OrderedDict()
     base_type = None
     for line in lines:
         char_only = line.replace(' ', '')
@@ -84,7 +101,7 @@ def parse_file(ffp):
         res = re.search(pname_pat, line)
         if res:
             print('pname: ', res.group()[2:-2])
-            params.append(res.group()[2:-2])
+            doc_str_pms.append(res.group()[2:-2])
 
             dtype_res = re.search(dtype_pat, line)
             print(dtype_res.group())
@@ -97,14 +114,26 @@ def parse_file(ffp):
             optype_res = re.search(optype_pat, line)
             optype = optype_res.group()[1:-1]
             print(optype_res)
-
-    pstr = constructor(base_type, optype, params, dtypes)
+            inputs_str = line.split(')')[0]
+            inputs = inputs_str.split(',')
+            inputs = inputs[2:]  # remove class definition and tag
+            for inpy in inputs:
+                inpy = inpy.replace(' ', '')
+                if '=' in inpy:
+                    inp, defo = inpy.split('=')
+                else:
+                    inp = inpy
+                    defo = None
+                defaults[inp] = [defo]
+    doc_str_pms = doc_str_pms[1:]  # remove mat tag
+    dtypes = dtypes[1:]
+    pstr = constructor(base_type, optype, doc_str_pms, dtypes, defaults)
     print(pstr)
     # if line[3:5] == '``':
     #     para = line[5:]
 
 
 if __name__ == '__main__':
-    # parse_file('BoucWen.rst')
-    # parse_file('Bond_SP01.rst')
-    parse_file('BilinearOilDamper.rst')
+    # parse_mat_file('BoucWen.rst')
+    # parse_mat_file('Bond_SP01.rst')
+    parse_mat_file('BilinearOilDamper.rst')
