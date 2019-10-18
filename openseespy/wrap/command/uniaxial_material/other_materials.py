@@ -55,3 +55,17 @@ class MultiLinear(UniaxialMaterialBase):
         self._parameters = [self.op_type, self._tag, self.points]
         self.to_process(osi)
 
+
+class BoucWen(UniaxialMaterialBase):
+
+    def __init__(self, osi, alpha, ko, n, gamma, ao, deltanu):
+        self.alpha = int(alpha)
+        self.ko = float(ko)
+        self.n = float(n)
+        self.gamma = float(gamma)
+        self.ao = float(ao)
+        self.deltanu = float(deltanu)
+        osi.n_mats += 1
+        self._tag = osi.mats
+        self._parameters = [self.op_type, self._tag, self.alpha, self.ko, self.n, self.gamma, self.ao, self.deltanu]
+        self.to_process(osi)
