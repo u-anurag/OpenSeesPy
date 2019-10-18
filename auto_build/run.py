@@ -4,13 +4,17 @@ import re
 
 w4 = '    '
 w8 = '        '
+pname_pat = '\``([A-Za-z0-9_\./\\-]*)\``'
+dtype_pat = '\|([A-Za-z0-9_\./\\-]*)\|'
+optype_pat = "\'([A-Za-z0-9_\./\\-]*)\'"
 
 def clean_params(params):
     pms = []
     for pm in params:
         if len(pm) == 1 and pm.istitle():
             pm = 'big_' + pm.lower()
-        pms.append(pm.lower())
+        # pms.append(pm.lower())
+        pms.append(convert_camel_to_snake(pm))
     if 'tag' in pms[0]:
         pms = pms[1:]
     return pms
@@ -70,12 +74,18 @@ def parse_file(ffp):
     dtypes = []
     base_type = None
     for line in lines:
-        pname_pat = '\``([A-Za-z0-9_\./\\-]*)\``'
+        char_only = line.replace(' ', '')
+        char_only = char_only.replace('\t', '')
+        if not len(char_only):
+            continue
+        first_char = char_only[0]
+        if first_char == '*':
+            continue
         res = re.search(pname_pat, line)
         if res:
-            print(res.group()[2:-2])
+            print('pname: ', res.group()[2:-2])
             params.append(res.group()[2:-2])
-            dtype_pat = '\|([A-Za-z0-9_\./\\-]*)\|'
+
             dtype_res = re.search(dtype_pat, line)
             print(dtype_res.group())
             dtype = dtype_res.group()[1:-1]
@@ -84,7 +94,6 @@ def parse_file(ffp):
             print(line)
             base_type = line.split('.. function:: ')[-1]
             base_type = base_type.split('(')[0]
-            optype_pat = "\'([A-Za-z0-9_\./\\-]*)\'"
             optype_res = re.search(optype_pat, line)
             optype = optype_res.group()[1:-1]
             print(optype_res)
@@ -97,4 +106,5 @@ def parse_file(ffp):
 
 if __name__ == '__main__':
     # parse_file('BoucWen.rst')
-    parse_file('Bond_SP01.rst')
+    # parse_file('Bond_SP01.rst')
+    parse_file('BilinearOilDamper.rst')
