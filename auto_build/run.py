@@ -62,10 +62,12 @@ def constructor(base_type, op_type, defaults, op_kwargs):
         para.append('')
 
         pms = clean_param_names(defaults)
-        cl_pms = []
+        cl_pms = []  # TODO: need to add op_kwarg str
         for pm in pms:
             if pms[pm].org_name not in kw_pms or pms[pm].org_name in op_kwargs[kw]:
                 cl_pms.append(pm)
+
+        # Build definition string
         pjoins = []
         for pm in cl_pms:
             default = pms[pm].default_value
@@ -74,13 +76,18 @@ def constructor(base_type, op_type, defaults, op_kwargs):
             elif default is not None:
                 if pms[pm].default_is_expression:
                     pjoins.append(f'{pm}=None')
-                else:  # TODO: deal with w_op_kwargs
+                else:
                     pjoins.append(f'{pm}={default}')
             else:
-                pjoins.append(f'{pm}')
+                if pms[pm].marker:
+                    pjoins.append(f'{pm}=None')
+                else:
+                    pjoins.append(f'{pm}')
 
         pjoined = ', '.join(pjoins)
         para.append(f'    def __init__(self, osi, {pjoined}):')
+
+        # Create init function saving logic
         for i, pm in enumerate(cl_pms):
             dtype = pms[pm].dtype
             if dtype == 'float':
@@ -93,7 +100,15 @@ def constructor(base_type, op_type, defaults, op_kwargs):
         para.append(w8 + 'self._tag = osi.mats')
         pjoins = []
         need_special_logic = False
+        applied_op_warg = False
         for pm in cl_pms:
+            if pms[pm].marker:
+                continue
+            if pms[pm].is_flag:
+                continue
+            if not applied_op_warg and pm in op_kwargs[kw]:
+                applied_op_warg = True
+                pjoins.append(f"'{kw}'")
             if pms[pm].default_is_expression:
                 need_special_logic = True
                 break
@@ -104,6 +119,16 @@ def constructor(base_type, op_type, defaults, op_kwargs):
             else:
                 pjoins.append('self.' + pm)
         para.append(w8 + 'self._parameters = [self.op_type, self._tag, self.%s]' % (', '.join(pjoins)))
+        for pm in cl_pms:
+            if pms[pm].marker:
+                para.append(w8 + f"if getattr(self, '{pm}') is not None:")
+                if pms[pm].packed:
+                    para.append(w8 + w4 + f"self._parameters += ['-{pms[pm].marker}', *self.{pm}]")
+                else:
+                    para.append(w8 + w4 + f"self._parameters += ['-{pms[pm].marker}', self.{pm}]")
+            if pms[pm].is_flag:
+                para.append(w8 + f"if getattr(self, '{pm}') is not None:")
+                para.append(w8 + w4 + f"self._parameters += ['-{pm}']")
         if need_special_logic:
             sp_logic = False
             sp_pms = []
@@ -151,7 +176,7 @@ class Param(object):
         self.dtype = dtype
         self.default_is_expression = False
         self.p_description = ''
-        self.has_marker = False
+        self.marker = None
         self.is_flag = False
 
 
@@ -173,7 +198,7 @@ def clean_fn_line(line):
     inputs = inputs_str.split(',')
     inputs = inputs[2:]  # remove class definition and tag
     op_kwargs = OrderedDict()
-    markers = []
+    markers = OrderedDict()
     flags = []
     cur_kwarg = None
     names_only = []
@@ -194,13 +219,13 @@ def clean_fn_line(line):
         if '-' in inp:
             word = inp[2:-1]
             if len(inputs) > j + 1 and (word == names_only[j + 1] or word + 'Args' == names_only[j + 1]):
-                markers.append(names_only[j + 1])
+                markers[names_only[j + 1]] = word
                 continue
             elif len(inputs) > j + 1 and '-' in names_only[j + 1]:  # TODO: unsure if this is best way to identify flags
                 flags.append(word)
                 inp = word
             else:
-                cur_kwarg = word
+                cur_kwarg = '-' + word
                 op_kwargs[cur_kwarg] = []
                 continue
         if inp[0] == '*':
@@ -222,7 +247,7 @@ def clean_fn_line(line):
         if cur_kwarg is not None:
             op_kwargs[cur_kwarg].append(inp)
         for marker in markers:
-            defaults[marker].has_marker = True
+            defaults[marker].marker = markers[marker]
         for flag in flags:
             defaults[flag].is_flag = True
 
@@ -341,8 +366,8 @@ if __name__ == '__main__':
     # parse_mat_file('BoucWen.rst')
     # parse_mat_file('Bond_SP01.rst')
     import user_paths as up
-    # parse_mat_file(up.OPY_DOCS_PATH + 'ReinforcingSteel.rst')
-    parse_all_uniaxial_mat()
+    parse_mat_file(up.OPY_DOCS_PATH + 'ConfinedConcrete01.rst')
+    # parse_all_uniaxial_mat()
     # defo = 'a2*k'
     # if any(re.findall('|'.join(['\*', '\/', '\+', '\-', '\^']), defo)):
     #     print('found')
