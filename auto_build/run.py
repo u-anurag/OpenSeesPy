@@ -6,9 +6,10 @@ from collections import OrderedDict
 
 w4 = '    '
 w8 = '        '
-pname_pat = '\``([A-Za-z0-9_\./\\-]*)\``'
+pname_pat = '\``([A-Za-z0-9_\./\\\'-]*)\``'
 dtype_pat = '\|([A-Za-z0-9_\./\\-]*)\|'
 optype_pat = "\'([A-Za-z0-9_\./\\-]*)\'"
+
 
 def clean_param_names(params):
     pms = OrderedDict()
@@ -153,7 +154,9 @@ def clean_fn_line(line):
     inputs_str = line.split(')')[0]
     inputs = inputs_str.split(',')
     inputs = inputs[2:]  # remove class definition and tag
+    op_kwargs = OrderedDict()
     w_op_kwargs = None  # if function has strings to enter keyword args
+    cur_kwarg = None
     for inpy in inputs:
         inpy = inpy.replace(' ', '')
         if '=' in inpy:
@@ -161,14 +164,28 @@ def clean_fn_line(line):
         else:
             inp = inpy
             defo = None
+        if '-' in inp:
+            cur_kwarg = inp[1:]
+            op_kwargs[cur_kwarg] = []
+            # continue
         if inp[0] == '*':
             inp = inp[1:]
             packed = True
         else:
             packed = False
-        defaults[inp] = Param(org_name=inp, default_value=defo, packed=packed)
+        if inp in defaults:
+            i = 2
+            new_inp = inp + '_%i' % i
+            while new_inp in defaults:
+                i += 1
+                new_inp = inp + '_%i' % i
+        else:
+            new_inp = inp
+        defaults[new_inp] = Param(org_name=inp, default_value=defo, packed=packed)
         if defo is not None and check_if_default_is_expression(defo):
             defaults[inp].default_is_expression = True
+        if cur_kwarg is not None:
+            op_kwargs[cur_kwarg].append(inp)
     return base_type, optype, defaults, w_op_kwargs
 
 
@@ -214,7 +231,8 @@ def parse_mat_file(ffp):
             base_type, optype, defaults, w_op_kwargs = clean_fn_line(line)
     doc_str_pms = doc_str_pms[1:]  # remove mat tag
     dtypes = dtypes[1:]
-
+    print(doc_str_pms)
+    print(list(defaults))
     assert len(doc_str_pms) == len(defaults), (len(doc_str_pms), len(defaults))
     for i, pm in enumerate(doc_str_pms):
         defaults[pm].dtype = dtypes[i]
@@ -264,6 +282,8 @@ def parse_all_uniaxial_mat():
         para = ['from openseespy.wrap.command.uniaxial_material.base_material import UniaxialMaterialBase', '', '']
         print(item, collys[item])
         for mat in collys[item]:
+            if mat == 'steel4':
+                continue
             open(up.OPY_DOCS_PATH + '%s.rst' % mat)
             ffp = up.OPY_DOCS_PATH + '%s.rst' % mat
             parse_mat_file(ffp)
@@ -274,7 +294,7 @@ if __name__ == '__main__':
     # parse_mat_file('BoucWen.rst')
     # parse_mat_file('Bond_SP01.rst')
     import user_paths as up
-    parse_mat_file(up.OPY_DOCS_PATH + 'steel02.rst')
+    parse_mat_file(up.OPY_DOCS_PATH + 'ReinforcingSteel.rst')
     # parse_all_uniaxial_mat()
     # defo = 'a2*k'
     # if any(re.findall('|'.join(['\*', '\/', '\+', '\-', '\^']), defo)):
