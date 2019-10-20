@@ -44,85 +44,98 @@ def convert_camel_to_snake(name):
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
 
 
-def constructor(base_type, op_type, defaults, w_op_kwargs):
+def constructor(base_type, op_type, defaults, op_kwargs):
+    kw_pms = []
+    for kw in op_kwargs:
+        for pm in op_kwargs[kw]:
+            kw_pms.append(pm)
+    if not len(op_kwargs):
+        op_kwargs[''] = []
     para = []
-    op_class_name = convert_name_to_class_name(op_type)
-    base_class_name = base_type[0].capitalize() + base_type[1:]
-    para.append(f'class {op_class_name}({base_class_name}Base):')
-    para.append('')
+    for kw in op_kwargs:
+        name_from_kw = kw.replace('-', '')
+        name_from_kw = name_from_kw.replace("'", '')
+        op_class_name = convert_name_to_class_name(op_type + name_from_kw)
+        base_class_name = base_type[0].capitalize() + base_type[1:]
+        para.append(f'class {op_class_name}({base_class_name}Base):')
+        para.append('')
 
-    pms = clean_param_names(defaults)
-    pjoins = []
-    for pm in pms:
-        default = pms[pm].default_value
-        if default is not None:
-            if pms[pm].default_is_expression:
-                pjoins.append(f'{pm}=None')
-            else:  # TODO: deal with w_op_kwargs
-                pjoins.append(f'{pm}={default}')
-        else:
-            pjoins.append(f'{pm}')
-
-    pjoined = ', '.join(pjoins)
-    para.append(f'    def __init__(self, osi, {pjoined}):')
-    for i, pm in enumerate(pms):
-        dtype = pms[pm].dtype
-        if dtype == 'float':
-            para.append(w8 + f'self.{pm} = float({pm})')
-        elif dtype == 'int':
-            para.append(w8 + f'self.{pm} = int({pm})')
-        else:
-            para.append(w8 + f'self.{pm} = {pm}')
-    para.append(w8 + 'osi.n_mats += 1')
-    para.append(w8 + 'self._tag = osi.mats')
-    pjoins = []
-    need_special_logic = False
-    for pm in pms:
-        if pms[pm].default_is_expression:
-            need_special_logic = True
-            break
-        if pms[pm].dtype == 'obj':
-            pjoins.append(f'self.{pm}.tag')
-        elif pms[pm].packed:
-            pjoins.append('*self.' + pm)
-        else:
-            pjoins.append('self.' + pm)
-    para.append(w8 + 'self._parameters = [self.op_type, self._tag, self.%s]' % (', '.join(pjoins)))
-    if need_special_logic:
-        sp_logic = False
-        sp_pms = []
+        pms = clean_param_names(defaults)
+        cl_pms = []
         for pm in pms:
+            if pms[pm].org_name not in kw_pms or pms[pm].org_name in op_kwargs[kw]:
+                cl_pms.append(pm)
+        pjoins = []
+        for pm in cl_pms:
+            default = pms[pm].default_value
+            if default is not None:
+                if pms[pm].default_is_expression:
+                    pjoins.append(f'{pm}=None')
+                else:  # TODO: deal with w_op_kwargs
+                    pjoins.append(f'{pm}={default}')
+            else:
+                pjoins.append(f'{pm}')
+
+        pjoined = ', '.join(pjoins)
+        para.append(f'    def __init__(self, osi, {pjoined}):')
+        for i, pm in enumerate(cl_pms):
+            dtype = pms[pm].dtype
+            if dtype == 'float':
+                para.append(w8 + f'self.{pm} = float({pm})')
+            elif dtype == 'int':
+                para.append(w8 + f'self.{pm} = int({pm})')
+            else:
+                para.append(w8 + f'self.{pm} = {pm}')
+        para.append(w8 + 'osi.n_mats += 1')
+        para.append(w8 + 'self._tag = osi.mats')
+        pjoins = []
+        need_special_logic = False
+        for pm in cl_pms:
             if pms[pm].default_is_expression:
-                sp_logic = True
-            if sp_logic:
-                sp_pms.append("'%s'" % pm)
-        para.append(w8 + f"special_pms = [{', '.join(sp_pms)}]")
-        para.append(w8 + 'for pm in special_pms:')
-        para.append(w8 + w4 + 'if getattr(self, pm) is not None:')
-        para.append(w8 + w8 + 'self._parameters += [getattr(self, pm)]')
-    para.append(w8 + 'self.to_process(osi)')
+                need_special_logic = True
+                break
+            if pms[pm].dtype == 'obj':
+                pjoins.append(f'self.{pm}.tag')
+            elif pms[pm].packed:
+                pjoins.append('*self.' + pm)
+            else:
+                pjoins.append('self.' + pm)
+        para.append(w8 + 'self._parameters = [self.op_type, self._tag, self.%s]' % (', '.join(pjoins)))
+        if need_special_logic:
+            sp_logic = False
+            sp_pms = []
+            for pm in pms:
+                if pms[pm].default_is_expression:
+                    sp_logic = True
+                if sp_logic:
+                    sp_pms.append("'%s'" % pm)
+            para.append(w8 + f"special_pms = [{', '.join(sp_pms)}]")
+            para.append(w8 + 'for pm in special_pms:')
+            para.append(w8 + w4 + 'if getattr(self, pm) is not None:')
+            para.append(w8 + w8 + 'self._parameters += [getattr(self, pm)]')
+        para.append(w8 + 'self.to_process(osi)')
 
-    low_op_name = convert_camel_to_snake(op_class_name)
-    low_base_name = convert_camel_to_snake(base_class_name)
+        low_op_name = convert_camel_to_snake(op_class_name)
+        low_base_name = convert_camel_to_snake(base_class_name)
 
-    # Build test
-    para.append('')
-    para.append(f'def test_{low_op_name}():')
-    para.append(w4 + 'osi = opw.OpenseesInstance(dimensions=2)')
-    pjoins = []
-    for i, pm in enumerate(pms):
-        default = pms[pm].default_value
-        dtype = pms[pm].dtype
-        if default is not None:
-            pjoins.append(f'{pm}={default}')
-        elif dtype == 'float':
-            pjoins.append(f'{pm}=1.0')
-        elif dtype == 'obj':
-            pjoins.append(f'{pm}=obj')
-        else:
-            pjoins.append(f'{pm}=1')
-    pjoint = ', '.join(pjoins)
-    para.append(w4 + f'opw.{low_base_name}.{op_class_name}(osi, {pjoint})')
+        # Build test
+        para.append('')
+        para.append(f'def test_{low_op_name}():')
+        para.append(w4 + 'osi = opw.OpenseesInstance(dimensions=2)')
+        pjoins = []
+        for i, pm in enumerate(cl_pms):
+            default = pms[pm].default_value
+            dtype = pms[pm].dtype
+            if default is not None:
+                pjoins.append(f'{pm}={default}')
+            elif dtype == 'float':
+                pjoins.append(f'{pm}=1.0')
+            elif dtype == 'obj':
+                pjoins.append(f'{pm}=obj')
+            else:
+                pjoins.append(f'{pm}=1')
+        pjoint = ', '.join(pjoins)
+        para.append(w4 + f'opw.{low_base_name}.{op_class_name}(osi, {pjoint})')
     return '\n'.join(para)
 
 
@@ -155,7 +168,6 @@ def clean_fn_line(line):
     inputs = inputs_str.split(',')
     inputs = inputs[2:]  # remove class definition and tag
     op_kwargs = OrderedDict()
-    w_op_kwargs = None  # if function has strings to enter keyword args
     cur_kwarg = None
     for inpy in inputs:
         inpy = inpy.replace(' ', '')
@@ -167,7 +179,7 @@ def clean_fn_line(line):
         if '-' in inp:
             cur_kwarg = inp[1:]
             op_kwargs[cur_kwarg] = []
-            # continue
+            continue
         if inp[0] == '*':
             inp = inp[1:]
             packed = True
@@ -186,7 +198,7 @@ def clean_fn_line(line):
             defaults[inp].default_is_expression = True
         if cur_kwarg is not None:
             op_kwargs[cur_kwarg].append(inp)
-    return base_type, optype, defaults, w_op_kwargs
+    return base_type, optype, defaults, op_kwargs
 
 
 def parse_mat_file(ffp):
@@ -197,7 +209,7 @@ def parse_mat_file(ffp):
     defaults = None
     base_type = None
     optype = None
-    w_op_kwargs = False
+    op_kwargs = OrderedDict()
     descriptions = []
     for line in lines:
         char_only = line.replace(' ', '')
@@ -209,6 +221,9 @@ def parse_mat_file(ffp):
             continue
         res = re.search(pname_pat, line)
         if res:
+            print(res.group()[2:4])
+            if len(res.group()) > 4 and "'-" == res.group()[2:4]:
+                continue  # op_kwarg
             ei = line.find('|')
             dtype_res = re.search(dtype_pat, line)
             if dtype_res is None:
@@ -228,7 +243,7 @@ def parse_mat_file(ffp):
                 doc_str_pms.append(pm)
                 dtypes.append(dtype)
         if base_type is None and '.. function:: ' in line:
-            base_type, optype, defaults, w_op_kwargs = clean_fn_line(line)
+            base_type, optype, defaults, op_kwargs = clean_fn_line(line)
     doc_str_pms = doc_str_pms[1:]  # remove mat tag
     dtypes = dtypes[1:]
     print(doc_str_pms)
@@ -238,7 +253,7 @@ def parse_mat_file(ffp):
         defaults[pm].dtype = dtypes[i]
         defaults[pm].p_description = descriptions[i]
 
-    pstr = constructor(base_type, optype, defaults, w_op_kwargs)
+    pstr = constructor(base_type, optype, defaults, op_kwargs)
     print(pstr)
     return pstr
     # if line[3:5] == '``':
