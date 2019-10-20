@@ -281,9 +281,7 @@ def parse_mat_file(ffp):
             dtype_res = re.search(dtype_pat, line)
             if dtype_res is None:
                 continue
-            print(dtype_res.group())
             dtype = dtype_res.group()[1:-1]
-            print(dtype_res.end())
             des = line[dtype_res.end():]
             des = des.replace('\t', ' ')
             while des[0] == ' ':
@@ -305,7 +303,7 @@ def parse_mat_file(ffp):
     print('fn_inps: ', list(defaults))
     assert len(doc_str_pms) == len(defaults) + len(op_kwargs), (len(doc_str_pms), (len(defaults), len(op_kwargs)))
     for i, pm in enumerate(doc_str_pms):
-        if pm in op_kwargs:
+        if '-' + pm in op_kwargs:
             continue
         defaults[pm].dtype = dtypes[i]
         defaults[pm].p_description = descriptions[i]
@@ -366,8 +364,8 @@ if __name__ == '__main__':
     # parse_mat_file('BoucWen.rst')
     # parse_mat_file('Bond_SP01.rst')
     import user_paths as up
-    parse_mat_file(up.OPY_DOCS_PATH + 'ConfinedConcrete01.rst')
-    # parse_all_uniaxial_mat()
+    # parse_mat_file(up.OPY_DOCS_PATH + 'PySimple1.rst')
+    parse_all_uniaxial_mat()
     # defo = 'a2*k'
     # if any(re.findall('|'.join(['\*', '\/', '\+', '\-', '\^']), defo)):
     #     print('found')
