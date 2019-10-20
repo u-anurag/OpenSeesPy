@@ -322,30 +322,30 @@ def parse_all_uniaxial_mat():
     collys = {}
     mtype = None
     for line in lines:
-        if ':caption: Steel & Reinforcing-Steel Materials' in line:
+        if 'Steel & Reinforcing-Steel Materials' in line:
             mtype = 'steel'
             collys[mtype] = []
             continue
-        if ':caption: Concrete Materials' in line:
+        if 'Concrete Materials' in line:
             mtype = 'concrete'
             collys[mtype] = []
             continue
-        if ':caption: Standard Uniaxial Materials' in line:
+        if 'Standard Uniaxial Materials' in line:
             mtype = 'standard'
             collys[mtype] = []
             continue
-        if ':caption: PyTzQz uniaxial materials' in line:
+        if 'PyTzQz uniaxial materials' in line:
             mtype = 'pytz'
             collys[mtype] = []
             continue
-        if ':caption: Other Uniaxial Materials' in line:
+        if 'Other Uniaxial Materials' in line:
             mtype = 'other'
             collys[mtype] = []
             continue
         if mtype is not None:
             line = line.replace(' ', '')
             line = line.replace('\t', '')
-            if 'toctree' in line or 'maxdepth' in line or line =='':
+            if ':' in line or '-' in line or '#' in line  or line == '':
                 continue
             collys[mtype].append(line)
     for item in collys:
