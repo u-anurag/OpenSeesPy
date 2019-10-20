@@ -69,7 +69,9 @@ def constructor(base_type, op_type, defaults, op_kwargs):
         pjoins = []
         for pm in cl_pms:
             default = pms[pm].default_value
-            if default is not None:
+            if pms[pm].is_flag:
+                pjoins.append(f'{pm}=False')
+            elif default is not None:
                 if pms[pm].default_is_expression:
                     pjoins.append(f'{pm}=None')
                 else:  # TODO: deal with w_op_kwargs
@@ -149,6 +151,8 @@ class Param(object):
         self.dtype = dtype
         self.default_is_expression = False
         self.p_description = ''
+        self.has_marker = False
+        self.is_flag = False
 
 
 def check_if_default_is_expression(defo):
@@ -169,8 +173,18 @@ def clean_fn_line(line):
     inputs = inputs_str.split(',')
     inputs = inputs[2:]  # remove class definition and tag
     op_kwargs = OrderedDict()
+    markers = []
+    flags = []
     cur_kwarg = None
-    for inpy in inputs:
+    names_only = []
+    for j, inpy in enumerate(inputs):
+        name_only = inpy.replace(' ', '')
+        if '*' in name_only:
+            name_only = name_only.replace('*', '')
+            # name_only = name_only.replace('Args', '')
+        name_only = name_only.split('=')[0]
+        names_only.append(name_only)
+    for j, inpy in enumerate(inputs):
         inpy = inpy.replace(' ', '')
         if '=' in inpy:
             inp, defo = inpy.split('=')
@@ -178,9 +192,17 @@ def clean_fn_line(line):
             inp = inpy
             defo = None
         if '-' in inp:
-            cur_kwarg = inp[1:]
-            op_kwargs[cur_kwarg] = []
-            continue
+            word = inp[2:-1]
+            if len(inputs) > j + 1 and (word == names_only[j + 1] or word + 'Args' == names_only[j + 1]):
+                markers.append(names_only[j + 1])
+                continue
+            elif len(inputs) > j + 1 and '-' in names_only[j + 1]:  # TODO: unsure if this is best way to identify flags
+                flags.append(word)
+                inp = word
+            else:
+                cur_kwarg = word
+                op_kwargs[cur_kwarg] = []
+                continue
         if inp[0] == '*':
             inp = inp[1:]
             packed = True
@@ -199,6 +221,11 @@ def clean_fn_line(line):
             defaults[inp].default_is_expression = True
         if cur_kwarg is not None:
             op_kwargs[cur_kwarg].append(inp)
+        for marker in markers:
+            defaults[marker].has_marker = True
+        for flag in flags:
+            defaults[flag].is_flag = True
+
     return base_type, optype, defaults, op_kwargs
 
 
@@ -223,8 +250,8 @@ def parse_mat_file(ffp):
         res = re.search(pname_pat, line)
         if res:
             print(res.group()[2:4])
-            if len(res.group()) > 4 and "'-" == res.group()[2:4]:
-                continue  # op_kwarg
+            # if len(res.group()) > 4 and "'-" == res.group()[2:4]:
+            #     continue  # op_kwarg
             ei = line.find('|')
             dtype_res = re.search(dtype_pat, line)
             if dtype_res is None:
@@ -241,16 +268,20 @@ def parse_mat_file(ffp):
             descriptions.append(des)
             res = re.findall(pname_pat, line[:ei])
             for pm in res:
+                if len(pm) > 4 and "'-" == pm[0:2]:
+                    pm = pm[2:-1]
                 doc_str_pms.append(pm)
                 dtypes.append(dtype)
         if base_type is None and '.. function:: ' in line:
             base_type, optype, defaults, op_kwargs = clean_fn_line(line)
     doc_str_pms = doc_str_pms[1:]  # remove mat tag
     dtypes = dtypes[1:]
-    print(doc_str_pms)
-    print(list(defaults))
-    assert len(doc_str_pms) == len(defaults), (len(doc_str_pms), len(defaults))
+    print('doc_str: ', doc_str_pms)
+    print('fn_inps: ', list(defaults))
+    assert len(doc_str_pms) == len(defaults) + len(op_kwargs), (len(doc_str_pms), (len(defaults), len(op_kwargs)))
     for i, pm in enumerate(doc_str_pms):
+        if pm in op_kwargs:
+            continue
         defaults[pm].dtype = dtypes[i]
         defaults[pm].p_description = descriptions[i]
 
