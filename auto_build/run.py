@@ -45,7 +45,8 @@ def convert_camel_to_snake(name):
 
 
 def constructor(base_type, op_type, defaults, op_kwargs):
-    kw_pms = []
+    kw_pms = []  # TODO: This only works if object should be split into many objects based on kwargs, but
+    # some kwargs are just to input a single value.
     for kw in op_kwargs:
         for pm in op_kwargs[kw]:
             kw_pms.append(pm)
@@ -309,8 +310,8 @@ if __name__ == '__main__':
     # parse_mat_file('BoucWen.rst')
     # parse_mat_file('Bond_SP01.rst')
     import user_paths as up
-    parse_mat_file(up.OPY_DOCS_PATH + 'ReinforcingSteel.rst')
-    # parse_all_uniaxial_mat()
+    # parse_mat_file(up.OPY_DOCS_PATH + 'ReinforcingSteel.rst')
+    parse_all_uniaxial_mat()
     # defo = 'a2*k'
     # if any(re.findall('|'.join(['\*', '\/', '\+', '\-', '\^']), defo)):
     #     print('found')
