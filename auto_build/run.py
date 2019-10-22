@@ -1,5 +1,3 @@
-import docutils.frontend
-import docutils.parsers.rst
 import re
 from collections import OrderedDict
 
@@ -118,7 +116,7 @@ def constructor(base_type, op_type, defaults, op_kwargs):
                 pjoins.append('*self.' + pm)
             else:
                 pjoins.append('self.' + pm)
-        para.append(w8 + 'self._parameters = [self.op_type, self._tag, self.%s]' % (', '.join(pjoins)))
+        para.append(w8 + 'self._parameters = [self.op_type, self._tag, %s]' % (', '.join(pjoins)))
         for pm in cl_pms:
             if pms[pm].marker:
                 para.append(w8 + f"if getattr(self, '{pm}') is not None:")
@@ -154,7 +152,9 @@ def constructor(base_type, op_type, defaults, op_kwargs):
         for i, pm in enumerate(cl_pms):
             default = pms[pm].default_value
             dtype = pms[pm].dtype
-            if default is not None:
+            if pms[pm].default_is_expression:
+                pjoins.append(f'{pm}=None')
+            elif default is not None:
                 pjoins.append(f'{pm}={default}')
             elif dtype == 'float':
                 pjoins.append(f'{pm}=1.0')
@@ -164,6 +164,8 @@ def constructor(base_type, op_type, defaults, op_kwargs):
                 pjoins.append(f'{pm}=1')
         pjoint = ', '.join(pjoins)
         para.append(w4 + f'opw.{low_base_name}.{op_class_name}(osi, {pjoint})')
+        para.append('')
+        para.append('')
     return '\n'.join(para)
 
 
@@ -255,8 +257,9 @@ def clean_fn_line(line):
 
 
 def parse_mat_file(ffp):
-    a = open(ffp)
-    lines = a.read().split('\n')
+    a = open(ffp, encoding="utf8")
+    f = a.read()
+    lines = f.splitlines()
     doc_str_pms = []
     dtypes = []
     defaults = None
@@ -350,13 +353,17 @@ def parse_all_uniaxial_mat():
             collys[mtype].append(line)
     for item in collys:
         para = ['from openseespy.wrap.command.uniaxial_material.base_material import UniaxialMaterialBase', '', '']
+        para += ['import openseespy.wrap as opw  # for testing only', '', '']
         print(item, collys[item])
         for mat in collys[item]:
             if mat == 'steel4':
                 continue
             open(up.OPY_DOCS_PATH + '%s.rst' % mat)
             ffp = up.OPY_DOCS_PATH + '%s.rst' % mat
-            parse_mat_file(ffp)
+            para.append(parse_mat_file(ffp))
+        with open(f'{item}.py', 'w') as ofile:
+            ofile.write('\n'.join(para))
+
 
 
 

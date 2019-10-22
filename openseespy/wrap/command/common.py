@@ -19,9 +19,11 @@ class Mass(OpenseesObject):
         self.to_process(osi)
 
 
-def set_equal_dofs(node_1, node_2, dof):
+def set_equal_dof(node_1, node_2, dof):
     opy.equalDOF(node_1.tag, node_2.tag,  dof)
 
+def set_equal_dofs(node_1, node_2, dofs):
+    opy.equalDOF(node_1.tag, node_2.tag,  *dofs)
 
 class EqualDOF(OpenseesObject):
     op_base_type = "equalDOF"
