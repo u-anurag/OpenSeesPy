@@ -582,7 +582,8 @@ def plot_modeshape(*argv,overlap="yes",Model="none"):
 	return fig, ax
 	
 
-def plot_deformedshape(Model="none", LoadCase="none", tstep = -1, scale = 10, overlap='no'):
+
+def plot_deformedshape(Model="none", LoadCase="none", tstep = -1, scale = 10, overlap='no', monitorEleTags = [], monitorOutFile = "none"):
 	"""
 	Command: plot_deformedshape(Model="modelName", LoadCase="loadCase name", <tstep = time (float)>, <scale = scaleFactor (float)>, <overlap='yes'>)
 	
@@ -617,11 +618,39 @@ def plot_deformedshape(Model="none", LoadCase="none", tstep = -1, scale = 10, ov
 				print("XX Warining: Time-Step has exceeded maximum analysis time step XX")
 			printLine = "Deformation at time: " + str(round(timeSteps[jj], 2))
 		
+		
+		#############  Get data for the specified region to tag ##############
+		adjustViewport = "no"
+		adjNodeNum = 0			# Start the counter to curtail the array later
+		
+		if monitorEleTags != []:
+			adjustViewport = "yes"
+			N_elementArray = len(elementArray)
+			NmonitorEle = len(monitorEleTags)
+			monitorElementArray = []   # initiate an empty list
+			for jj in range(0,NmonitorEle):
+				# Check where is the monitor ele tag in the original element array and get the node connectivity in a new array
+				for kk in range(0,N_elementArray):
+					if elementArray[kk][0] == monitorEleTags[jj]:
+						monitorElementArray.append(elementArray[kk])
+						break
+
+			# Now replace the elementArray with the new one to be used further
+			elementArray = monitorElementArray
+			
+		else:
+			pass
+		
+		#######################################################################
+		
 		DeflectedNodeCoordArray = nodeArray[:,1:]+ scale*Disp_nodeArray[int(jj),:,:]
 		nodetags = nodeArray[:,0]
 		
 		show_element_tags = 'no'			# Set show tags to "no" to plot deformed shapes.
 
+		#### Read the monitoring element deformation data
+		# MonitorEleFile = os.path.join(LoadCaseDir,monitorOutFile)
+		# MonitorEleDef = np.transpose(np.loadtxt(MonitorEleFile, dtype=float, delimiter=None, converters=None, unpack=True))
 		
 		def nodecoords(nodetag):
 			# Returns an array of node coordinates: works like nodeCoord() in opensees.
@@ -640,6 +669,9 @@ def plot_deformedshape(Model="none", LoadCase="none", tstep = -1, scale = 10, ov
 			fig = plt.figure()
 			ax = fig.add_subplot(1,1,1)
 			
+			if adjustViewport == "yes":
+				adjusted_NodeArray = np.zeros([len(nodeArray),2])   # 2D array
+			
 			for ele in elementArray:
 				eleTag = int(ele[0])
 				Nodes =ele[1:]
@@ -652,6 +684,11 @@ def plot_deformedshape(Model="none", LoadCase="none", tstep = -1, scale = 10, ov
 					iNode_final = nodecoordsFinal(Nodes[0])
 					jNode_final = nodecoordsFinal(Nodes[1])
 					
+					if adjustViewport == "yes":
+						for node in Nodes:
+							if node not in adjusted_NodeArray[:,0]:
+								adjusted_NodeArray[adjNodeNum,0:1] = nodecoordsFinal(node)
+						
 					if overlap == "yes":
 						ipltf._plotBeam2D(iNode, jNode, ax, show_element_tags, eleTag, "wire")
 					
@@ -667,6 +704,11 @@ def plot_deformedshape(Model="none", LoadCase="none", tstep = -1, scale = 10, ov
 					jNode_final = nodecoordsFinal(Nodes[1])
 					kNode_final = nodecoordsFinal(Nodes[2])
 
+					if adjustViewport == "yes":
+						for node in Nodes:
+							if node not in adjusted_NodeArray[:,0]:
+								adjusted_NodeArray[adjNodeNum,0:1] = nodecoordsFinal(node)
+								
 					if overlap == "yes":
 						ipltf._plotTri2D(iNode, jNode, kNode, iNode, ax, show_element_tags, eleTag, "wire", fillSurface='no')
 					
@@ -684,17 +726,28 @@ def plot_deformedshape(Model="none", LoadCase="none", tstep = -1, scale = 10, ov
 					kNode_final = nodecoordsFinal(Nodes[2])
 					lNode_final = nodecoordsFinal(Nodes[3])
 					
+					if adjustViewport == "yes":
+						for node in Nodes:
+							if node not in adjusted_NodeArray[:,0]:
+								adjusted_NodeArray[adjNodeNum,0:1] = nodecoordsFinal(node)
+								
 					if overlap == "yes":
 						ipltf._plotQuad2D(iNode, jNode, kNode, lNode, ax, show_element_tags, eleTag, "wire", fillSurface='no')
 						
 					ipltf._plotQuad2D(iNode_final, jNode_final, kNode_final, lNode_final, ax, show_element_tags, eleTag, "solid", fillSurface='yes')
-					            
+				
+				adjNodeNum+=1
+	            
 			ax.text(0.1, 0.90, printLine, transform=ax.transAxes)
 		
 		else:
 			print('3D model')
 			fig = plt.figure()
 			ax = fig.add_subplot(1,1,1, projection='3d')
+			
+			if adjustViewport == "yes":
+				adjusted_NodeArray = np.zeros([len(nodeArray),3])   #  array
+				print(np.shape(adjusted_NodeArray))
 			
 			for ele in elementArray:
 				eleTag = int(ele[0])
@@ -708,6 +761,12 @@ def plot_deformedshape(Model="none", LoadCase="none", tstep = -1, scale = 10, ov
 					iNode_final = nodecoordsFinal(Nodes[0])
 					jNode_final = nodecoordsFinal(Nodes[1])
 					
+					if adjustViewport == "yes":
+						for node in Nodes:
+							if node not in adjusted_NodeArray[:,0]:
+								adjusted_NodeArray[adjNodeNum,:] = nodecoordsFinal(node)
+								# print(nodecoordsFinal(node))
+								
 					if overlap == "yes":
 						ipltf._plotBeam3D(iNode, jNode, ax, show_element_tags, eleTag, "wire")
 					
@@ -725,6 +784,11 @@ def plot_deformedshape(Model="none", LoadCase="none", tstep = -1, scale = 10, ov
 					kNode_final = nodecoordsFinal(Nodes[2])
 					lNode_final = nodecoordsFinal(Nodes[3])
 					
+					if adjustViewport == "yes":
+						for node in Nodes:
+							if node not in adjusted_NodeArray[:,0]:
+								adjusted_NodeArray[adjNodeNum,0:2] = nodecoordsFinal(node)
+								
 					if overlap == "yes":
 						ipltf._plotQuad3D(iNode, jNode, kNode, lNode, ax, show_element_tags, eleTag, "wire", fillSurface='no')
 						
@@ -751,13 +815,24 @@ def plot_deformedshape(Model="none", LoadCase="none", tstep = -1, scale = 10, ov
 					kkNode_final = nodecoordsFinal(Nodes[6])
 					llNode_final = nodecoordsFinal(Nodes[7])
 					
+					if adjustViewport == "yes":
+						for node in Nodes:
+							if node not in adjusted_NodeArray[:,0]:
+								adjusted_NodeArray[adjNodeNum,0:2] = nodecoordsFinal(node)
+								
 					if overlap == "yes":
 						ipltf._plotCubeVol(iNode, jNode, kNode, lNode, iiNode, jjNode, kkNode, llNode, ax, show_element_tags, eleTag, "wire", fillSurface='no') # plot undeformed shape
 
 					ipltf._plotCubeVol(iNode_final, jNode_final, kNode_final, lNode_final, iiNode_final, jjNode_final, kkNode_final, llNode_final, 
 									ax, show_element_tags, eleTag, "solid", fillSurface='yes')
-									
+					
+				adjNodeNum+=1
+				
 			ax.text2D(0.1, 0.90, printLine, transform=ax.transAxes)
+		
+		if adjustViewport == "yes":
+			DeflectedNodeCoordArray = adjusted_NodeArray[0:adjNodeNum-1,:]
+		
 		ipltf._setStandardViewport(fig, ax, DeflectedNodeCoordArray, len(nodecoords(nodetags[0])))					
 		plt.axis('on')
 		plt.show()
