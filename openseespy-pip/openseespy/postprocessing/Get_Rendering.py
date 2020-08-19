@@ -205,7 +205,7 @@ def readODB(*argv):
 		return nodes, elements
 
 
-def saveFiberData2D(ModelName, LoadCaseName, eleNumber, sectionNumber, deltaT = 0.0):
+def saveFiberData2D(ModelName, LoadCaseName, eleNumber, sectionNumber, deltaT = 0.0, ZLE = True):
     """
     Model : string
         The name of the input model database.    
@@ -230,7 +230,7 @@ def saveFiberData2D(ModelName, LoadCaseName, eleNumber, sectionNumber, deltaT = 
     FibreFileName = FibreName  + '_ele_' + str(eleNumber) + '_section_' + str(sectionNumber) + ftype
     FiberDir = os.path.join(ODBdir, LoadCaseName, FibreFileName)
 	
-    if sectionNumber == 0:
+    if ZLE == True:
         ops.recorder('Element' , '-file', FiberDir, '-time', '-dT', deltaT, '-ele', eleNumber, 'section', 'fiberData')
     else:
         ops.recorder('Element' , '-file', FiberDir, '-time', '-dT', deltaT, '-ele', eleNumber, 'section', str(sectionNumber), 'fiberData')
