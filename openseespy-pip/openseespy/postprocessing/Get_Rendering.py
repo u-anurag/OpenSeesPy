@@ -205,7 +205,7 @@ def readODB(*argv):
 		return nodes, elements
 
 
-def saveFiberData2D(ModelName, LoadCaseName, eleNumber, sectionNumber, deltaT = 0.0, ZLE = True):
+def saveFiberData2D(ModelName, LoadCaseName, eleNumber, sectionNumber = 1, deltaT = 0.0, ZLE = False):
     """
     Model : string
         The name of the input model database.    
