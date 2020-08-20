@@ -274,7 +274,7 @@ def _readNodeDispData(ModelName,LoadCaseName):
     nodes_displacement : [Ntime,Nnodes,ndm]
 
     """
-	
+
     ODBdir = ModelName+"_ODB"		# ODB Dir name
     LoadCaseDir = os.path.join(ODBdir, LoadCaseName)
 	

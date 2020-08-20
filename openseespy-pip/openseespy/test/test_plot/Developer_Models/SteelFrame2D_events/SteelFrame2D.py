@@ -14,7 +14,7 @@ print("Start 2D Steel Frame Example")
 
 from openseespy.opensees import *
 from openseespy.postprocessing.Get_Rendering import * 
-import openseespy.postprocessing.Get_Rendering as opp
+import openseespy.postprocessing.Get_Rendering_Experimental as oppE
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -296,7 +296,7 @@ if(AnalysisType=="Pushover"):
 	DispIncr=0.1
 	NstepsPush=int(MaxDisp/DispIncr)
 	
-	Model = '2D_Steel'
+	Model = 'test'
 	LoadCase = 'Pushover'   
 	dt=0.2       
 	createODB(Model, LoadCase, Nmodes = 3)
@@ -324,8 +324,8 @@ if(AnalysisType=="Pushover"):
 # 	opp.plot_model('nodes','elements',Model = Model)
 # 	opp.plot_modeshape(2, 200, Model = Model)
 # 	opp.plot_deformedshape(Model, LoadCase, tstep = 12, scale = 10, overlap = 'yes')
-	PlotHelper = opp.plot_deformedshape_Events(Model, LoadCase, tstep = 3.1231, overlap = 'yes')
-	fig, ax = PlotHelper.plot()
+	PlotHelper = oppE.plot_deformedshape_Events(Model, LoadCase, tstep = 3.1231, overlap = 'yes')
+# 	fig, ax = PlotHelper.plot()
     
  	# opp.plot_deformedshape(Model, LoadCase, tstep = 3.1231, overlap = 'yes')
 # 	ani = opp.animate_deformedshape( Model, LoadCase, dt, Scale=10)
