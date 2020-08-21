@@ -167,6 +167,6 @@ opp.plot_modeshape(1, 200, Model = Model)
 opp.plot_modeshape(2, 200, Model = Model)
 
 
-ani = opp.animate_deformedshape( Model, LoadCase, dt, Scale=30, Movie = 'Test')
+# ani = opp.animate_deformedshape( Model, LoadCase, dt, scale=30, Movie = 'Test')
 
 

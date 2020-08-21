@@ -205,7 +205,7 @@ def readODB(*argv):
 		return nodes, elements
 
 
-def saveFiberData2D(ModelName, LoadCaseName, eleNumber, sectionNumber, deltaT = 0.0):
+def saveFiberData2D(ModelName, LoadCaseName, eleNumber, sectionNumber = 1, deltaT = 0.0, ZLE = False):
     """
     Model : string
         The name of the input model database.    
@@ -230,8 +230,11 @@ def saveFiberData2D(ModelName, LoadCaseName, eleNumber, sectionNumber, deltaT = 
     FibreFileName = FibreName  + '_ele_' + str(eleNumber) + '_section_' + str(sectionNumber) + ftype
     FiberDir = os.path.join(ODBdir, LoadCaseName, FibreFileName)
 	
-    ops.recorder('Element' , '-file', FiberDir, '-time', '-dT', deltaT, '-ele', eleNumber, 'section', str(sectionNumber), 'fiberData')
-
+    if ZLE == True:
+        ops.recorder('Element' , '-file', FiberDir, '-time', '-dT', deltaT, '-ele', eleNumber, 'section', 'fiberData')
+    else:
+        ops.recorder('Element' , '-file', FiberDir, '-time', '-dT', deltaT, '-ele', eleNumber, 'section', str(sectionNumber), 'fiberData')
+        
 
 ### All the plotting related definitions start here.
 
@@ -603,241 +606,238 @@ def plot_deformedshape(Model="none", LoadCase="none", tstep = -1, scale = 10, ov
 		print("No output database specified to plot the deformed shape.")
 		print("Command should be plot_deformedshape(Model='modelname',loadCase='loadcase',<tstep=time>,<scale=int>)")
 		print("Not plotting deformed shape. Exiting now.")
+		raise Exception('No model or output database specified.')
+		
+	
+	print("Reading displacement data from "+str(Model)+"_ODB/"+LoadCase)
+	nodeArray, elementArray = idbf._readNodesandElements(Model)
+	timeSteps, Disp_nodeArray = idbf._readNodeDispData(Model,LoadCase)
+		
+	if tstep == -1:
+		jj = len(timeSteps)-1
+		printLine = "Final deformed shape"
+	else:
+		jj = (np.abs(timeSteps - tstep)).argmin()			# index closest to the time step requested.
+		if timeSteps[-1] < tstep:
+			print("XX Warining: Time-Step has exceeded maximum analysis time step XX")
+		printLine = "Deformation at time: " + str(round(timeSteps[jj], 2))
+		
+		
+	#############  Get data for the specified region to tag ##############
+	adjustViewport = "no"
+	adjNodeNum = 0			# Start the counter to curtail the array later
+		
+	if monitorEleTags != []:
+		adjustViewport = "yes"
+		N_elementArray = len(elementArray)
+		NmonitorEle = len(monitorEleTags)
+		monitorElementArray = []   # initiate an empty list
+		for jj in range(0,NmonitorEle):
+			# Check where is the monitor ele tag in the original element array and get the node connectivity in a new array
+			for kk in range(0,N_elementArray):
+				if elementArray[kk][0] == monitorEleTags[jj]:
+					monitorElementArray.append(elementArray[kk])
+					break
+		# Now replace the elementArray with the new one to be used further
+		elementArray = monitorElementArray
+			
+	#######################################################################
+
+	DeflectedNodeCoordArray = nodeArray[:,1:]+ scale*Disp_nodeArray[int(jj),:,:]
+	nodetags = nodeArray[:,0]
+		
+	show_element_tags = 'no'			# Set show tags to "no" to plot deformed shapes.
+
+	#### Read the monitoring element deformation data
+	# MonitorEleFile = os.path.join(LoadCaseDir,monitorOutFile)
+	# MonitorEleDef = np.transpose(np.loadtxt(MonitorEleFile, dtype=float, delimiter=None, converters=None, unpack=True))
+		
+	def nodecoords(nodetag):
+		# Returns an array of node coordinates: works like nodeCoord() in opensees.
+		i, = np.where(nodeArray[:,0] == float(nodetag))
+		return nodeArray[int(i),1:]
+    
+    # TODO C: Can we just return DeflectedNodeCoordArray here instead of summing?
+	def nodecoordsFinal(nodetag):
+		# Returns an array of final deformed node coordinates
+		i, = np.where(nodeArray[:,0] == float(nodetag))				# Original coordinates
+		return nodeArray[int(i),1:] + scale*Disp_nodeArray[int(jj),int(i),:]
+
+	# Check if the model is 2D or 3D
+	if len(nodecoords(nodetags[0])) == 2:
+		print('2D model')
+		fig = plt.figure()
+		ax = fig.add_subplot(1,1,1)
+			
+		if adjustViewport == "yes":
+			adjusted_NodeArray = np.zeros([len(nodeArray),2])   # 2D array
+	
+		for ele in elementArray:
+			eleTag = int(ele[0])
+			Nodes =ele[1:]
+		
+			if len(Nodes) == 2:
+				# 3D beam-column elements
+				iNode = nodecoords(Nodes[0])
+				jNode = nodecoords(Nodes[1])
+					
+				iNode_final = nodecoordsFinal(Nodes[0])
+				jNode_final = nodecoordsFinal(Nodes[1])
+					
+				if adjustViewport == "yes":
+					for node in Nodes:
+						if node not in adjusted_NodeArray[:,0]:
+							adjusted_NodeArray[adjNodeNum,0:1] = nodecoordsFinal(node)
+						
+				if overlap == "yes":
+					ipltf._plotBeam2D(iNode, jNode, ax, show_element_tags, eleTag, "wire")
+			
+				ipltf._plotBeam2D(iNode_final, jNode_final, ax, show_element_tags, eleTag, "solid")
+					
+			if len(Nodes) == 3:
+				## 2D Planer three-node shell elements
+				iNode = nodecoords(Nodes[0])
+				jNode = nodecoords(Nodes[1])
+				kNode = nodecoords(Nodes[2])
+					
+				iNode_final = nodecoordsFinal(Nodes[0])
+				jNode_final = nodecoordsFinal(Nodes[1])
+				kNode_final = nodecoordsFinal(Nodes[2])
+
+				if adjustViewport == "yes":
+					for node in Nodes:
+						if node not in adjusted_NodeArray[:,0]:
+							adjusted_NodeArray[adjNodeNum,0:1] = nodecoordsFinal(node)
+								
+				if overlap == "yes":
+					ipltf._plotTri2D(iNode, jNode, kNode, iNode, ax, show_element_tags, eleTag, "wire", fillSurface='no')
+					
+				ipltf._plotTri2D(iNode_final, jNode_final, kNode_final, iNode_final, ax, show_element_tags, eleTag, "solid", fillSurface='yes')
+					
+			if len(Nodes) == 4:
+				## 2D four-node Quad/shell element
+				iNode = nodecoords(Nodes[0])
+				jNode = nodecoords(Nodes[1])
+				kNode = nodecoords(Nodes[2])
+				lNode = nodecoords(Nodes[3])
+					
+				iNode_final = nodecoordsFinal(Nodes[0])
+				jNode_final = nodecoordsFinal(Nodes[1])
+				kNode_final = nodecoordsFinal(Nodes[2])
+				lNode_final = nodecoordsFinal(Nodes[3])
+					
+				if adjustViewport == "yes":
+					for node in Nodes:
+						if node not in adjusted_NodeArray[:,0]:
+							adjusted_NodeArray[adjNodeNum,0:1] = nodecoordsFinal(node)
+								
+				if overlap == "yes":
+					ipltf._plotQuad2D(iNode, jNode, kNode, lNode, ax, show_element_tags, eleTag, "wire", fillSurface='no')
+						
+				ipltf._plotQuad2D(iNode_final, jNode_final, kNode_final, lNode_final, ax, show_element_tags, eleTag, "solid", fillSurface='yes')
+				
+			adjNodeNum+=1
+	            
+		ax.text(0.1, 0.90, printLine, transform=ax.transAxes)
 		
 	else:
-		print("Reading displacement data from "+str(Model)+"_ODB/"+LoadCase)
-		nodeArray, elementArray = idbf._readNodesandElements(Model)
-		timeSteps, Disp_nodeArray = idbf._readNodeDispData(Model,LoadCase)
-		
-		if tstep == -1:
-			jj = len(timeSteps)-1
-			printLine = "Final deformed shape"
-		else:
-			jj = (np.abs(timeSteps - tstep)).argmin()			# index closest to the time step requested.
-			if timeSteps[-1] < tstep:
-				print("XX Warining: Time-Step has exceeded maximum analysis time step XX")
-			printLine = "Deformation at time: " + str(round(timeSteps[jj], 2))
-		
-		
-		#############  Get data for the specified region to tag ##############
-		adjustViewport = "no"
-		adjNodeNum = 0			# Start the counter to curtail the array later
-		
-		if monitorEleTags != []:
-			adjustViewport = "yes"
-			N_elementArray = len(elementArray)
-			NmonitorEle = len(monitorEleTags)
-			monitorElementArray = []   # initiate an empty list
-			for jj in range(0,NmonitorEle):
-				# Check where is the monitor ele tag in the original element array and get the node connectivity in a new array
-				for kk in range(0,N_elementArray):
-					if elementArray[kk][0] == monitorEleTags[jj]:
-						monitorElementArray.append(elementArray[kk])
-						break
-
-			# Now replace the elementArray with the new one to be used further
-			elementArray = monitorElementArray
+		print('3D model')
+		fig = plt.figure()
+		ax = fig.add_subplot(1,1,1, projection='3d')
+	
+		if adjustViewport == "yes":
+			adjusted_NodeArray = np.zeros([len(nodeArray),3])   #  array
+			print(np.shape(adjusted_NodeArray))
 			
-		else:
-			pass
-		
-		#######################################################################
-		
-		DeflectedNodeCoordArray = nodeArray[:,1:]+ scale*Disp_nodeArray[int(jj),:,:]
-		nodetags = nodeArray[:,0]
-		
-		show_element_tags = 'no'			# Set show tags to "no" to plot deformed shapes.
-
-		#### Read the monitoring element deformation data
-		# MonitorEleFile = os.path.join(LoadCaseDir,monitorOutFile)
-		# MonitorEleDef = np.transpose(np.loadtxt(MonitorEleFile, dtype=float, delimiter=None, converters=None, unpack=True))
-		
-		def nodecoords(nodetag):
-			# Returns an array of node coordinates: works like nodeCoord() in opensees.
-			i, = np.where(nodeArray[:,0] == float(nodetag))
-			return nodeArray[int(i),1:]
-
-        # TODO C: Can we just return DeflectedNodeCoordArray here instead of summing?
-		def nodecoordsFinal(nodetag):
-			# Returns an array of final deformed node coordinates
-			i, = np.where(nodeArray[:,0] == float(nodetag))				# Original coordinates
-			return nodeArray[int(i),1:] + scale*Disp_nodeArray[int(jj),int(i),:]
-
-		# Check if the model is 2D or 3D
-		if len(nodecoords(nodetags[0])) == 2:
-			print('2D model')
-			fig = plt.figure()
-			ax = fig.add_subplot(1,1,1)
-			
-			if adjustViewport == "yes":
-				adjusted_NodeArray = np.zeros([len(nodeArray),2])   # 2D array
-			
-			for ele in elementArray:
-				eleTag = int(ele[0])
-				Nodes =ele[1:]
+		for ele in elementArray:
+			eleTag = int(ele[0])
+			Nodes =ele[1:]
 				
-				if len(Nodes) == 2:
-					# 3D beam-column elements
-					iNode = nodecoords(Nodes[0])
-					jNode = nodecoords(Nodes[1])
-					
-					iNode_final = nodecoordsFinal(Nodes[0])
-					jNode_final = nodecoordsFinal(Nodes[1])
-					
-					if adjustViewport == "yes":
-						for node in Nodes:
-							if node not in adjusted_NodeArray[:,0]:
-								adjusted_NodeArray[adjNodeNum,0:1] = nodecoordsFinal(node)
-						
-					if overlap == "yes":
-						ipltf._plotBeam2D(iNode, jNode, ax, show_element_tags, eleTag, "wire")
-					
-					ipltf._plotBeam2D(iNode_final, jNode_final, ax, show_element_tags, eleTag, "solid")
-					
-				if len(Nodes) == 3:
-					## 2D Planer three-node shell elements
-					iNode = nodecoords(Nodes[0])
-					jNode = nodecoords(Nodes[1])
-					kNode = nodecoords(Nodes[2])
-					
-					iNode_final = nodecoordsFinal(Nodes[0])
-					jNode_final = nodecoordsFinal(Nodes[1])
-					kNode_final = nodecoordsFinal(Nodes[2])
-
-					if adjustViewport == "yes":
-						for node in Nodes:
-							if node not in adjusted_NodeArray[:,0]:
-								adjusted_NodeArray[adjNodeNum,0:1] = nodecoordsFinal(node)
-								
-					if overlap == "yes":
-						ipltf._plotTri2D(iNode, jNode, kNode, iNode, ax, show_element_tags, eleTag, "wire", fillSurface='no')
-					
-					ipltf._plotTri2D(iNode_final, jNode_final, kNode_final, iNode_final, ax, show_element_tags, eleTag, "solid", fillSurface='yes')
-					
-				if len(Nodes) == 4:
-					## 2D four-node Quad/shell element
-					iNode = nodecoords(Nodes[0])
-					jNode = nodecoords(Nodes[1])
-					kNode = nodecoords(Nodes[2])
-					lNode = nodecoords(Nodes[3])
-					
-					iNode_final = nodecoordsFinal(Nodes[0])
-					jNode_final = nodecoordsFinal(Nodes[1])
-					kNode_final = nodecoordsFinal(Nodes[2])
-					lNode_final = nodecoordsFinal(Nodes[3])
-					
-					if adjustViewport == "yes":
-						for node in Nodes:
-							if node not in adjusted_NodeArray[:,0]:
-								adjusted_NodeArray[adjNodeNum,0:1] = nodecoordsFinal(node)
-								
-					if overlap == "yes":
-						ipltf._plotQuad2D(iNode, jNode, kNode, lNode, ax, show_element_tags, eleTag, "wire", fillSurface='no')
-						
-					ipltf._plotQuad2D(iNode_final, jNode_final, kNode_final, lNode_final, ax, show_element_tags, eleTag, "solid", fillSurface='yes')
-				
-				adjNodeNum+=1
-	            
-			ax.text(0.1, 0.90, printLine, transform=ax.transAxes)
-		
-		else:
-			print('3D model')
-			fig = plt.figure()
-			ax = fig.add_subplot(1,1,1, projection='3d')
+			if len(Nodes) == 2:
+				## 3D beam-column elements
+				iNode = nodecoords(Nodes[0])
+				jNode = nodecoords(Nodes[1])
 			
-			if adjustViewport == "yes":
-				adjusted_NodeArray = np.zeros([len(nodeArray),3])   #  array
-				print(np.shape(adjusted_NodeArray))
+				iNode_final = nodecoordsFinal(Nodes[0])
+				jNode_final = nodecoordsFinal(Nodes[1])
 			
-			for ele in elementArray:
-				eleTag = int(ele[0])
-				Nodes =ele[1:]
+				if adjustViewport == "yes":
+					for node in Nodes:
+						if node not in adjusted_NodeArray[:,0]:
+							adjusted_NodeArray[adjNodeNum,:] = nodecoordsFinal(node)
+							# print(nodecoordsFinal(node))
+								
+				if overlap == "yes":
+					ipltf._plotBeam3D(iNode, jNode, ax, show_element_tags, eleTag, "wire")
+			
+				ipltf._plotBeam3D(iNode_final, jNode_final, ax, show_element_tags, eleTag, "solid")
+					
+			if len(Nodes) == 4:
+				## 3D four-node Quad/shell element
+				iNode = nodecoords(Nodes[0])
+				jNode = nodecoords(Nodes[1])
+				kNode = nodecoords(Nodes[2])
+				lNode = nodecoords(Nodes[3])
+			
+				iNode_final = nodecoordsFinal(Nodes[0])
+				jNode_final = nodecoordsFinal(Nodes[1])
+				kNode_final = nodecoordsFinal(Nodes[2])
+				lNode_final = nodecoordsFinal(Nodes[3])
+					
+				if adjustViewport == "yes":
+					for node in Nodes:
+						if node not in adjusted_NodeArray[:,0]:
+							adjusted_NodeArray[adjNodeNum,0:2] = nodecoordsFinal(node)
+								
+				if overlap == "yes":
+					ipltf._plotQuad3D(iNode, jNode, kNode, lNode, ax, show_element_tags, eleTag, "wire", fillSurface='no')
 				
-				if len(Nodes) == 2:
-					## 3D beam-column elements
-					iNode = nodecoords(Nodes[0])
-					jNode = nodecoords(Nodes[1])
-					
-					iNode_final = nodecoordsFinal(Nodes[0])
-					jNode_final = nodecoordsFinal(Nodes[1])
-					
-					if adjustViewport == "yes":
-						for node in Nodes:
-							if node not in adjusted_NodeArray[:,0]:
-								adjusted_NodeArray[adjNodeNum,:] = nodecoordsFinal(node)
-								# print(nodecoordsFinal(node))
-								
-					if overlap == "yes":
-						ipltf._plotBeam3D(iNode, jNode, ax, show_element_tags, eleTag, "wire")
-					
-					ipltf._plotBeam3D(iNode_final, jNode_final, ax, show_element_tags, eleTag, "solid")
-					
-				if len(Nodes) == 4:
-					## 3D four-node Quad/shell element
-					iNode = nodecoords(Nodes[0])
-					jNode = nodecoords(Nodes[1])
-					kNode = nodecoords(Nodes[2])
-					lNode = nodecoords(Nodes[3])
-					
-					iNode_final = nodecoordsFinal(Nodes[0])
-					jNode_final = nodecoordsFinal(Nodes[1])
-					kNode_final = nodecoordsFinal(Nodes[2])
-					lNode_final = nodecoordsFinal(Nodes[3])
-					
-					if adjustViewport == "yes":
-						for node in Nodes:
-							if node not in adjusted_NodeArray[:,0]:
-								adjusted_NodeArray[adjNodeNum,0:2] = nodecoordsFinal(node)
-								
-					if overlap == "yes":
-						ipltf._plotQuad3D(iNode, jNode, kNode, lNode, ax, show_element_tags, eleTag, "wire", fillSurface='no')
-						
-					ipltf._plotQuad3D(iNode_final, jNode_final, kNode_final, lNode_final, ax, show_element_tags, eleTag, "solid", fillSurface='yes')
+				ipltf._plotQuad3D(iNode_final, jNode_final, kNode_final, lNode_final, ax, show_element_tags, eleTag, "solid", fillSurface='yes')
 
-				if len(Nodes) == 8:
-					## 3D eight-node Brick element
-					## Nodes in CCW on bottom (0-3) and top (4-7) faces resp
-					iNode = nodecoords(Nodes[0])
-					jNode = nodecoords(Nodes[1])
-					kNode = nodecoords(Nodes[2])
-					lNode = nodecoords(Nodes[3])
-					iiNode = nodecoords(Nodes[4])
-					jjNode = nodecoords(Nodes[5])
-					kkNode = nodecoords(Nodes[6])
-					llNode = nodecoords(Nodes[7])
+			if len(Nodes) == 8:
+				## 3D eight-node Brick element
+				## Nodes in CCW on bottom (0-3) and top (4-7) faces resp
+				iNode = nodecoords(Nodes[0])
+				jNode = nodecoords(Nodes[1])
+				kNode = nodecoords(Nodes[2])
+				lNode = nodecoords(Nodes[3])
+				iiNode = nodecoords(Nodes[4])
+				jjNode = nodecoords(Nodes[5])
+				kkNode = nodecoords(Nodes[6])
+				llNode = nodecoords(Nodes[7])
 					
-					iNode_final = nodecoordsFinal(Nodes[0])
-					jNode_final = nodecoordsFinal(Nodes[1])
-					kNode_final = nodecoordsFinal(Nodes[2])
-					lNode_final = nodecoordsFinal(Nodes[3])
-					iiNode_final = nodecoordsFinal(Nodes[4])
-					jjNode_final = nodecoordsFinal(Nodes[5])
-					kkNode_final = nodecoordsFinal(Nodes[6])
-					llNode_final = nodecoordsFinal(Nodes[7])
+				iNode_final = nodecoordsFinal(Nodes[0])
+				jNode_final = nodecoordsFinal(Nodes[1])
+				kNode_final = nodecoordsFinal(Nodes[2])
+				lNode_final = nodecoordsFinal(Nodes[3])
+				iiNode_final = nodecoordsFinal(Nodes[4])
+				jjNode_final = nodecoordsFinal(Nodes[5])
+				kkNode_final = nodecoordsFinal(Nodes[6])
+				llNode_final = nodecoordsFinal(Nodes[7])
 					
-					if adjustViewport == "yes":
-						for node in Nodes:
-							if node not in adjusted_NodeArray[:,0]:
-								adjusted_NodeArray[adjNodeNum,0:2] = nodecoordsFinal(node)
+				if adjustViewport == "yes":
+					for node in Nodes:
+						if node not in adjusted_NodeArray[:,0]:
+							adjusted_NodeArray[adjNodeNum,0:2] = nodecoordsFinal(node)
 								
-					if overlap == "yes":
-						ipltf._plotCubeVol(iNode, jNode, kNode, lNode, iiNode, jjNode, kkNode, llNode, ax, show_element_tags, eleTag, "wire", fillSurface='no') # plot undeformed shape
+				if overlap == "yes":
+					ipltf._plotCubeVol(iNode, jNode, kNode, lNode, iiNode, jjNode, kkNode, llNode, ax, show_element_tags, eleTag, "wire", fillSurface='no') # plot undeformed shape
 
-					ipltf._plotCubeVol(iNode_final, jNode_final, kNode_final, lNode_final, iiNode_final, jjNode_final, kkNode_final, llNode_final, 
+				ipltf._plotCubeVol(iNode_final, jNode_final, kNode_final, lNode_final, iiNode_final, jjNode_final, kkNode_final, llNode_final, 
 									ax, show_element_tags, eleTag, "solid", fillSurface='yes')
 					
-				adjNodeNum+=1
+			adjNodeNum+=1
 				
-			ax.text2D(0.1, 0.90, printLine, transform=ax.transAxes)
+		ax.text2D(0.1, 0.90, printLine, transform=ax.transAxes)
 		
-		if adjustViewport == "yes":
-			DeflectedNodeCoordArray = adjusted_NodeArray[0:adjNodeNum-1,:]
+	if adjustViewport == "yes":
+		DeflectedNodeCoordArray = adjusted_NodeArray[0:adjNodeNum-1,:]
 		
-		ipltf._setStandardViewport(fig, ax, DeflectedNodeCoordArray, len(nodecoords(nodetags[0])))					
-		plt.axis('on')
-		plt.show()
+	ipltf._setStandardViewport(fig, ax, DeflectedNodeCoordArray, len(nodecoords(nodetags[0])))					
+	plt.axis('on')
+	plt.show()
 		
-		return fig, ax
+	return fig, ax
 
 
 def animate_deformedshape( Model = 'none', LoadCase = 'none', dt = 0, tStart = 0, tEnd = 0, scale = 10, fps = 24, 

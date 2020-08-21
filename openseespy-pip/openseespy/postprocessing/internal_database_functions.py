@@ -267,7 +267,14 @@ def _readModeShapeData(ModelName,modeNumber):
 ############## Node Displacement Data ######################################
 
 def _readNodeDispData(ModelName,LoadCaseName):
-	
+    """
+    Returns
+    -------
+    timeSteps : [Ntime]
+    nodes_displacement : [Ntime,Nnodes,ndm]
+
+    """
+
     ODBdir = ModelName+"_ODB"		# ODB Dir name
     LoadCaseDir = os.path.join(ODBdir, LoadCaseName)
 	
