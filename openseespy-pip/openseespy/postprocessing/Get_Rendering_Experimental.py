@@ -268,3 +268,260 @@ class plot_deformedshape_Events:
         plt.show()
         return fig, ax
 
+    
+##### Mode shape plotter with buttons #####
+# It works when called from the terminal but did not work properly in Jupyter Notebook
+
+def plot_modeshape(modeNumber):
+	# Plot original shape
+	# overlap with mode shape with the mode number asked for
+	wipeAnalysis()
+	eigenVal = eigen(modeNumber)
+	# Tn=4*asin(1.0)/(eigenVal[0])**0.5
+	print(eigenVal)
+	
+	nodeList = getNodeTags()
+	eleList = getEleTags()
+	scale = 200				#offset for text
+
+	ele_style = {'color':'black', 'linewidth':1, 'linestyle':':'} # elements
+	Eig_style = {'color':'red', 'linewidth':1, 'linestyle':'-'} # elements
+	node_style = {'color':'black', 'marker':'.', 'linestyle':''} 
+
+	# Check if the model is 2D or 3D
+	if len(nodeCoord(nodeList[0])) == 2:
+		print('2D model')
+		x = []
+		y = []
+		
+		# plt.ion()
+		fig = plt.figure(figsize=(5,6.66))
+		plt.rcParams.update({'font.size': 7})
+		ax = fig.add_subplot()
+		# fig, ax = plt.subplots()
+		
+		OriginalMatrix = np.zeros([3,len(nodeList)])
+		ModeShapeMatrix = np.zeros([modeNumber,2,len(nodeList)])
+		
+		# Store original node coordinates and node tags
+		n = 0
+		for node in nodeList:
+			OriginalMatrix[0,n] = int(node)
+			OriginalMatrix[1:,n] = nodeCoord(node)
+			n += 1
+
+		# Store Mode shapes for each node upto specified modeNumber
+		for mode in range(1,modeNumber+1):
+			m = 0
+			for node in nodeList:
+				tempEigVector = nodeEigenvector(node, mode)
+				ModeShapeMatrix[mode-1,:,m] = np.array([tempEigVector[0], tempEigVector[1]])
+				m += 1
+		
+		def OrigNodeCoord(node):
+			i=0
+			while OriginalMatrix[0,i] != node:
+				i += 1
+			return OriginalMatrix[1,i], OriginalMatrix[2,i]
+			
+		def EigNodeCoord(node, mode):
+			i=0
+			while OriginalMatrix[0,i] != node:
+				i += 1
+			return ModeShapeMatrix[mode-1,0,i], ModeShapeMatrix[mode-1,1,i]
+			
+		
+		def update_modeshape(mode):
+			Tn = 4*asin(1.0)/(eigenVal[mode-1])**0.5
+			ax = fig.add_subplot()
+			plt.subplots_adjust(bottom=0.2)
+			for element in eleList:
+				Nodes = eleNodes(element)
+				iNode = OrigNodeCoord(Nodes[0])
+				jNode = OrigNodeCoord(Nodes[1])
+				iNode_Eig = EigNodeCoord(Nodes[0], mode)
+				jNode_Eig = EigNodeCoord(Nodes[1], mode)
+				x.append(iNode[0])  # list of x coordinates to define plot view area
+				y.append(iNode[1])	# list of y coordinates to define plot view area
+
+				plt.plot((iNode[0], jNode[0]), (iNode[1], jNode[1]),marker='', **ele_style)
+				plt.plot((iNode[0]+ scale*iNode_Eig[0], jNode[0]+ scale*jNode_Eig[0]), 
+							(iNode[1]+ scale*iNode_Eig[1], jNode[1]+ scale*jNode_Eig[1]),marker='', **Eig_style)
+
+			nodeMins = np.array([min(x),min(y)])
+			nodeMaxs = np.array([max(x),max(y)])
+			
+			xViewCenter = (nodeMins[0]+nodeMaxs[0])/2
+			yViewCenter = (nodeMins[1]+nodeMaxs[1])/2
+			view_range = max(max(x)-min(x), max(y)-min(y))
+			ax.set_xlim(xViewCenter-(1.1*view_range/1), xViewCenter+(1.1*view_range/1))
+			ax.set_ylim(yViewCenter-(1.1*view_range/1), yViewCenter+(1.1*view_range/1))
+			ax.text(0.05, 0.95, "Mode "+str(mode), transform=ax.transAxes)
+			ax.text(0.05, 0.90, "T = "+str("%.3f" % Tn)+" s", transform=ax.transAxes)
+		
+		update_modeshape(1)
+		
+		class Index(object):
+			ind = 0
+			# #STORE all mode shapes in a matrix/vectorized array and call them on update
+			def next(self, event):
+				self.ind += 1
+				currentMode = 1+ (self.ind % modeNumber)
+				# print(currentMode)
+				# plt.axes(ax)
+				# ax.clear()
+				if currentMode > 0:
+					# plt.cla()
+					ax.clear()
+					update_modeshape(currentMode)
+					plt.draw()
+				else:
+					pass
+
+			def prev(self, event):
+				self.ind -= 1
+				currentMode = 1+ (self.ind % modeNumber)
+				# print(currentMode)
+				# ax.clear()
+				# plt.axes(ax)
+				if currentMode > 0:
+					# plt.cla()
+					ax.clear()
+					update_modeshape(currentMode)
+					plt.draw()
+				else:
+					pass
+
+		callback = Index()
+		axprev = plt.axes([0.1, 0.05, 0.1, 0.065])
+		axnext = plt.axes([0.85, 0.05, 0.1, 0.065])
+		bnext = Button(axnext, 'Next')
+		# bnext = Button(	ax=axnext,
+				# label='Next',
+				# color='white')
+		bprev = Button(axprev, 'Previous', color='white')
+		bnext.on_clicked(callback.next)
+		bprev.on_clicked(callback.prev)
+		
+		
+	if len(nodeCoord(nodeList[0])) == 3:
+		print('3D model')
+		
+		x = []
+		y = []
+		z = []
+		fig = plt.figure(figsize=(5,6.66))
+		plt.rcParams.update({'font.size': 7})
+		# ax = fig.add_subplot(1,1,1, projection='3d')
+		
+		OriginalMatrix = np.zeros([4,len(nodeList)])
+		ModeShapeMatrix = np.zeros([modeNumber,3,len(nodeList)])
+		
+		# Store original node coordinates and node tags
+		n = 0
+		for node in nodeList:
+			OriginalMatrix[0,n] = int(node)
+			OriginalMatrix[1:,n] = nodeCoord(node)
+			n += 1
+
+		# Store Mode shapes for each node upto specified modeNumber
+		for mode in range(1,modeNumber+1):
+			m = 0
+			for node in nodeList:
+				tempEigVector = nodeEigenvector(node, mode)
+				ModeShapeMatrix[mode-1,:,m] = np.array([tempEigVector[0], tempEigVector[1], tempEigVector[2]])
+				m += 1
+		
+		def OrigNodeCoord(node):
+			i=0
+			while OriginalMatrix[0,i] != node:
+				i += 1
+			return OriginalMatrix[1,i], OriginalMatrix[2,i], OriginalMatrix[3,i]
+			
+		def EigNodeCoord(node, mode):
+			i=0
+			while OriginalMatrix[0,i] != node:
+				i += 1
+			return ModeShapeMatrix[mode-1,0,i], ModeShapeMatrix[mode-1,1,i], ModeShapeMatrix[mode-1,2,i]
+					
+		def update_modeshape(mode):
+			Tn = 4*asin(1.0)/(eigenVal[mode-1])**0.5
+			# print(mode, Tn)
+			ax = fig.add_subplot(projection='3d')
+			plt.subplots_adjust(bottom=0.2)
+			for element in eleList:
+				Nodes = eleNodes(element)
+				iNode = OrigNodeCoord(Nodes[0])
+				jNode = OrigNodeCoord(Nodes[1])
+				iNode_Eig = EigNodeCoord(Nodes[0], mode)
+				jNode_Eig = EigNodeCoord(Nodes[1], mode)
+				
+				x.append(iNode[0])  # list of x coordinates to define plot view area
+				y.append(iNode[1])	# list of y coordinates to define plot view area
+				z.append(iNode[2])	# list of z coordinates to define plot view area
+				
+				plt.plot((iNode[0], jNode[0]), (iNode[1], jNode[1]),(iNode[2], jNode[2]), marker='', **ele_style)
+				plt.plot((iNode[0]+ scale*iNode_Eig[0], jNode[0]+ scale*jNode_Eig[0]), 
+							(iNode[1]+ scale*iNode_Eig[1], jNode[1]+ scale*jNode_Eig[1]), 
+							(iNode[2]+ scale*iNode_Eig[2], jNode[2]+ scale*jNode_Eig[2]),
+								marker='', **Eig_style)
+
+			nodeMins = np.array([min(x),min(y),min(z)])
+			nodeMaxs = np.array([max(x),max(y),max(z)])
+			xViewCenter = (nodeMins[0]+nodeMaxs[0])/2
+			yViewCenter = (nodeMins[1]+nodeMaxs[1])/2
+			zViewCenter = (nodeMins[2]+nodeMaxs[2])/2
+			view_range = max(max(x)-min(x), max(y)-min(y), max(z)-min(z))
+			ax.set_xlim(xViewCenter-(view_range/4), xViewCenter+(view_range/4))
+			ax.set_ylim(yViewCenter-(view_range/4), yViewCenter+(view_range/4))
+			ax.set_zlim(zViewCenter-(view_range/3), zViewCenter+(view_range/3))
+			ax.text2D(0.05, 0.95, "Mode "+str(mode), transform=ax.transAxes)
+			ax.text2D(0.05, 0.90, "T = "+str("%.3f" % Tn)+" s", transform=ax.transAxes)
+			# ax.text2D(0.05, 0.99, "Mode Shapes", transform=ax.transAxes)
+		
+		update_modeshape(1)
+		
+		class Index(object):
+		
+			ind = 0
+			# #STORE all mode shapes in a matrix/vectorized array and call them on update
+			def next(self, event):
+				self.ind += 1
+				currentMode = 1+ (self.ind % modeNumber)
+				# print(currentMode)
+				# plt.axes(ax)
+				if currentMode > 0:
+					# plt.cla()
+					update_modeshape(currentMode)
+					plt.draw()
+				else:
+					pass
+
+			def prev(self, event):
+				self.ind -= 1
+				currentMode = 1+ (self.ind % modeNumber)
+				# print(currentMode)
+				# ax.clear()
+				# plt.axes(ax)
+				if currentMode > 0:
+					# plt.cla()
+					update_modeshape(currentMode)
+					plt.draw()
+				else:
+					pass
+
+		
+		callback = Index()
+		axprev = plt.axes([0.1, 0.05, 0.1, 0.065], frameon=False)
+		axnext = plt.axes([0.85, 0.05, 0.1, 0.065], frameon=False)
+		bnext = Button(axnext, '[ NEXT ]')
+		bprev = Button(axprev, '[ PREV ]', color='white')
+		bnext.on_clicked(callback.next)
+		bprev.on_clicked(callback.prev)
+		# update_modeshape(modeNumber)
+
+		
+	plt.axis('off')
+	plt.show()
+	
+	wipeAnalysis()
