@@ -18,38 +18,39 @@ def ModalAnalysis(numEigen, outname=None, pflag=1):
     Notes
     -----
         Total mass is obtained by summing the masses assigned to the
-        unrestrained dofs joints.
+        unrestrained dofs. Influence vectors for rotational excitation
+        are not correct at the moment, this addition remains as future work.
+        Which reference point to use is not clear for rotational excitations.
+        SAP2000 and Seismostruct use different reference points.
         
     Parameters
     ----------
     numEigen : int
         Number of eigenvalues to calculate.
     outname  : str, optional (The default is None)
-        if not None, the modal properties for first numEigen modes
+        if not None, the modal properties for the first numEigen modes
         will be printed into outname.csv.
     pflag    : int (1 or 0)
         flag to print output information on screen
 
     Returns
     -------
-    T      : numpy.ndarray
+    T        : numpy.ndarray
         Period array for the first numEigen modes.
-    Mratio : dictionary
-        Mass participation ratios for first numEigen modes.
-    Mtots  : dictionary
-        Total mass of the structure
+    Mratios  : dictionary
+        Effective modal mass participation ratios for the first numEigen modes.
+        Only given for horizontal and vertical excitation directions.
+    Mfactors : dictionary
+        Modal particpation factors for the first numEigen modes.
+        Only given for horizontal and vertical excitation directions.
+    Mtots    : dictionary
+        Total mass of the structure.
+        Only given for horizontal and vertical excitation directions.
 
     """
     import numpy as np
     import openseespy.opensees as op
     import sys
-    import time
-
-    # Determine maximum number of DOFs/node used in the system
-    NDF = 0
-    for node in op.getNodeTags():
-        temp = len(op.nodeDOFs(node))
-        if temp > NDF: NDF = temp
 
     op.wipeAnalysis()
     op.system('FullGeneral')
@@ -63,38 +64,50 @@ def ModalAnalysis(numEigen, outname=None, pflag=1):
     Mmatrix = op.printA('-ret') # Or use op.printA('-file','M.out')
     Mmatrix = np.array(Mmatrix) # Convert the list to an array
     Mmatrix.shape = (N,N)       # Make the array an NxN matrix
-    time.sleep(0.5)
     print( '\n************************************************************', \
-          '\nExtracting the mass matrix, ignore the previous warnings...')   
-    # Rerrange the mass matrix in accordance with nodelist obtained from getNodeTags() to obtain Muu
-    DOFs = []       # List containing indices of unrestrained DOFs from the global mass matrix
-    used = {}       # Dictionary with nodes and associated dof indices used in unrestrained mass matrix
-    ldict = {}      # Dictionary containing influence vectors
-    Mratio = {}     # Dictionary containing modal masses
-    for i in range(1,NDF+1):
-        ldict[i] = np.zeros([N,1])      # Dictionary containing influence vectors
-        Mratio[i] = np.zeros(numEigen)  # Dictionary containing modal masses
+          '\nExtracting the mass matrix, ignore the warnings...')
         
-    idx = 0 # new dof index to use in unrestrained mass matrix
-    for node in op.getNodeTags():               # start iterating over each node
-        used[node] = []                         # create the list of unrestrained dofs used for the current dof
-        ndf = len(op.nodeDOFs(node))            # number of DOFs used for the the current node
-        for j in range(ndf):                    # iterate over used DOFs for the current node
-            temp = op.nodeDOFs(node)[j]         # get idx of this dof, if -1 (restrained)
-            if temp not in DOFs and temp >= 0:  # if it is unrestrained and not in DOFs list
-                DOFs.append(temp)               # add to the unrestrained DOFs list
-                used[node].append(j+1)          # for current node add to the used dof list (new idx in Muu)
-                ldict[j+1][idx,0] = 1           # Assign 1 in influence vector if dof is in dir j
-                idx += 1
+    # Determine maximum number of DOFs/node used in the system
+    NDF = 0
+    for node in op.getNodeTags():
+        temp = len(op.nodeDOFs(node))
+        if temp > NDF: NDF = temp
 
-    # Get the unrestrained part of mass matrix, Muu
+    DOFs = []       # List containing indices of unrestrained DOFs in the global mass matrix
+    used = {}       # Dictionary with nodes and associated DOFs used in unrestrained mass matrix
+    ldict = {}      # Dictionary containing influence vectors
+    Mratios = {}    # Dictionary containing effective modal masses ratios
+    Mfactors = {}   # Dictionary containing modal participation factors
+    for i in range(1,NDF+1):
+        ldict[i] = np.zeros([N,1])
+        Mratios[i] = np.zeros(numEigen)
+        Mfactors[i] = np.zeros(numEigen)
+        
+    # Obtain indices of unrestrained DOFs
+    # And rename the ids of DOFs used in unrestrained part of mass matrix
+    idx = 0                                     # Counter for unrestrained DOFs
+    for node in op.getNodeTags():               # Start iterating over each node
+        used[node] = []                         # List containing local ids of unrestrained DOFs in op.nodeDOFs(node)
+        ndf = len(op.nodeDOFs(node))            # Obtain total number of DOFs for the current node
+        for j in range(ndf):                    # Iterate over total DOF of the current node
+            temp = op.nodeDOFs(node)[j]         # Get the global DOF id, if -1 it is restrained
+            if temp not in DOFs and temp >= 0:  # Check if this DOF is unrestrained and not known before
+                DOFs.append(temp)               # Save this global id, it belongs to an unrestrained DOF
+                used[node].append(j+1)          # Save this local id, it belongs to an unrestrained DOF
+                ldict[j+1][idx,0] = 1           # Influence vectors for horizontal and vertical excitations
+                                                # TODO -1: The influence vectors are not correct in case of rotational excitations
+                idx += 1                        # Increase the counter
+
+    # Get the unrestrained part of mass matrix
     Mmatrix = Mmatrix[DOFs,:][:,DOFs]           
 
-    # Calculate the total masses in unrestrained dofs
+    # From now on we will only work with unrestrained part of the global vectors and matrices
+    # Calculate the total masses assigned to the unrestrained DOFs
     Mtots = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0}
     for i in range(1,NDF+1):
         Mtots[i] = (ldict[i].T@Mmatrix@ldict[i])[0,0]
 
+    # Perform eigenvalue analysis
     op.wipeAnalysis()
     listSolvers = ['-genBandArpack','-fullGenLapack','-symmBandLapack']
     ok = 1  
@@ -106,10 +119,11 @@ def ModalAnalysis(numEigen, outname=None, pflag=1):
             ok = 0
         except: 
             catchOK = 1
-
+        
         if catchOK==0:
             for i in range(numEigen):
-                if eigenValues[i] < 0: ok = 1
+                if eigenValues[i] < 0: 
+                    ok = 1
             if ok==0: 
                 print('Eigenvalue analysis is completed.')
                 break
@@ -122,92 +136,108 @@ def ModalAnalysis(numEigen, outname=None, pflag=1):
         T = 2*np.pi/Omega
         frq = 1/T
 
+    # Note: influence factors for rotational excitation is wrong! 
+    # Obtain modal properties
     for mode in range(1,numEigen+1):
         idx = 0
-        phi = np.zeros([N,1])                         # Eigen vectors
+        phi = np.zeros([N,1]) # Eigen vector
         for node in used:
             for dof in used[node]:
                 phi[idx,0]=op.nodeEigenvector(node,mode,dof)
                 idx += 1
-        
+                
+        phi = phi/(phi.T@Mmatrix@phi)**0.5  # Normalize the eigen vector by modal mass
+        Mn = phi.T@Mmatrix@phi              # Modal mass (should always be equal to 1)
+
         for j in range(1,NDF+1):
-            if Mtots[j] != 0:                          # Check if any mass is assigned
-                Mn = phi.T@Mmatrix@phi                 # Modal mass
-                Ln = phi.T@Mmatrix@ldict[j]            # Effective modal mass
-                Mnstar = (Ln**2/Mn/Mtots[j]*100)[0,0]  # Normalised effective modal mass participating [%]
-            else: Mnstar = 0                           # No mass is assigned, insert 0, otherwise results is nan
-            Mratio[j][mode-1] = Mnstar                 # Save the modal mass participation ratio
+            if Mtots[j] != 0:                              # Check if any mass is assigned
+                Ln = phi.T@Mmatrix@ldict[j]                # Modal excitation factor
+                Mnstar = (Ln**2/Mn)[0,0]                   # Effective modal mass
+                Mfactors[j][mode-1] = Ln/Mn                # Modal participation factor
+                Mratios[j][mode-1] = (Mnstar/Mtots[j]*100) # Effective modal mass participation ratio [%]
     
     for j in range(1,7):
         try: 
-            Mratio[j]
+            Mratios[j]
         except: 
-            Mratio[j] = np.zeros(numEigen)
+            Mratios[j]  = np.zeros(numEigen)
+            Mfactors[j] = np.zeros(numEigen)
+
+    # TODO-1: Results are not correct for rotational excitation cases, ignore those.
+    del Mratios[6], Mratios[5], Mratios[4]
+    del Mfactors[6], Mfactors[5], Mfactors[4]
 
     # Calculate cumulative modal mass participation ratio
-    sM1 = np.cumsum(Mratio[1]); sM2 = np.cumsum(Mratio[2]); sM3 = np.cumsum(Mratio[3])
-    sM4 = np.cumsum(Mratio[4]); sM5 = np.cumsum(Mratio[5]); sM6 = np.cumsum(Mratio[6])      
+    sM1 = np.cumsum(Mratios[1]); sM2 = np.cumsum(Mratios[2]); sM3 = np.cumsum(Mratios[3])  
 
     # Print results to the .csv file
     if outname != None:
-        with open(outname+'.csv','w') as f:
-            f.write('Eigenvalue Analysis\n')
+        with open(outname+'.csv','w', encoding='utf-32') as f:
+            f.write('Modal Periods and Frequencies\n')
             f.write('Mode,T [sec],f [Hz],\u03C9 [rad/sec],\u03BB [rad\u00b2/sec\u00b2]\n')
             for mode in range(numEigen):      
                 f.write('%s,%s,%s,%s,%s\n' \
-                      % ("{:.0f}".format(mode+1), "{:.3f}".format(T[mode]), "{:.3f}".format(frq[mode]), \
-                         "{:.2f}".format(Omega[mode]), "{:.2f}".format(Lambda[mode])))
+                      % ("{:.0f}".format(mode+1), "{:.4f}".format(T[mode]), "{:.3f}".format(frq[mode]), \
+                     "{:.2f}".format(Omega[mode]), "{:.2f}".format(Lambda[mode])))
 
             f.write('\nTotal Mass of the Structure\n')
-            f.write('M1 [%],M2 [%],M3 [%],M4 [%],M5 [%],M6 [%]\n')
-            f.write('%s,%s,%s,%s,%s,%s\n' \
-                    % ( "{:.2f}".format(Mtots[1]), "{:.2f}".format(Mtots[2]), "{:.2f}".format(Mtots[3]), \
-                        "{:.2f}".format(Mtots[4]), "{:.2f}".format(Mtots[5]), "{:.2f}".format(Mtots[6])))
+            f.write('M\u2081 [%],M\u2082 [%],M\u2083 [%]\n')
+            f.write('%s,%s,%s\n' \
+                    % ( "{:.2f}".format(Mtots[1]), "{:.2f}".format(Mtots[2]), "{:.2f}".format(Mtots[3])))
 
-            f.write('\nModal Mass Participation Ratio\n') 
-            f.write('Mode,M1 [%],M2 [%],M3 [%],M4 [%],M5 [%],M6 [%]\n')               
+            f.write('\nModal Mass Participation Factors\n') 
+            f.write('Mode,\u0393\u2081,\u0393\u2082,\u0393\u2083\n')               
             for mode in range(numEigen):
-                f.write('%s,%s,%s,%s,%s,%s,%s\n' % ("{:.0f}".format(mode+1), \
-                    "{:.2f}".format(Mratio[1][mode]), "{:.2f}".format(Mratio[2][mode]), "{:.2f}".format(Mratio[3][mode]), \
-                    "{:.2f}".format(Mratio[4][mode]), "{:.2f}".format(Mratio[5][mode]), "{:.2f}".format(Mratio[6][mode])))  
+                f.write('%s,%s,%s,%s\n' % ("{:.0f}".format(mode+1), \
+                    "{:.3f}".format(Mfactors[1][mode]), "{:.3f}".format(Mfactors[2][mode]), "{:.3f}".format(Mfactors[3][mode])))  
 
-            f.write('\nCumulative Modal Mass Participation Ratio\n') 
-            f.write('Mode,\u2211M1 [%],\u2211M2 [%],\u2211M3 [%],\u2211M4 [%],\u2211M5 [%],\u2211M6 [%]\n')               
+            f.write('\nEffective Modal Mass Participation Ratios\n') 
+            f.write('Mode,U\u2081 [%],U\u2082 [%],U\u2083 [%]\n')               
             for mode in range(numEigen):
-                f.write('%s,%s,%s,%s,%s,%s,%s\n' % ("{:.0f}".format(mode+1), \
-                    "{:.2f}".format(sM1[mode]), "{:.2f}".format(sM2[mode]), "{:.2f}".format(sM3[mode]), \
-                    "{:.2f}".format(sM4[mode]), "{:.2f}".format(sM5[mode]), "{:.2f}".format(sM6[mode])))  
+                f.write('%s,%s,%s,%s\n' % ("{:.0f}".format(mode+1), \
+                    "{:.3f}".format(Mratios[1][mode]), "{:.3f}".format(Mratios[2][mode]), "{:.3f}".format(Mratios[3][mode])))  
+
+            f.write('\nCumulative Effective Modal Mass Participation Ratios\n') 
+            f.write('Mode,\u2211U\u2081 [%],\u2211U\u2082 [%],\u2211U\u2083 [%]\n')               
+            for mode in range(numEigen):
+                f.write('%s,%s,%s,%s\n' % ("{:.0f}".format(mode+1), \
+                    "{:.3f}".format(sM1[mode]), "{:.3f}".format(sM2[mode]), "{:.3f}".format(sM3[mode])))  
 
     # Print modal analysis results to the screen
     if pflag == 1:
-        print('\nEigenvalue Analysis Results')
-        print('Mode| T [sec] | f [Hz] | \u03C9 [rad/sec] | \u03BB [rad\u00b2/sec\u00b2]')
+        print('\nModal Periods and Frequencies')
+        print('%4s|%8s|%10s|%12s|%12s' \
+              % ('Mode', 'T [sec]','f [Hz]','\u03C9 [rad/sec]', '\u03BB [rad\u00b2/sec\u00b2]'))
         for mode in range(numEigen):      
-            print('%3s |%7s  |%6s  |%9s    |%9s' \
-                  % ("{:.0f}".format(mode+1), "{:.3f}".format(T[mode]), "{:.3f}".format(frq[mode]), \
+            print('%4s|%8s|%10s|%12s|%12s' \
+                  % ("{:.0f}".format(mode+1), "{:.4f}".format(T[mode]), "{:.3f}".format(frq[mode]), \
                      "{:.2f}".format(Omega[mode]), "{:.2f}".format(Lambda[mode])))
 
         print('\nTotal Mass of the Structure')
-        print('%8s|%8s|%8s|%8s|%8s|%8s' \
-              % ('M1','M2','M3','M4','M5','M6'))
-        print('%8s|%8s|%8s|%8s|%8s|%8s' \
-                % ( "{:.1f}".format(Mtots[1]), "{:.1f}".format(Mtots[2]), "{:.1f}".format(Mtots[3]), \
-                    "{:.1f}".format(Mtots[4]), "{:.1f}".format(Mtots[5]), "{:.1f}".format(Mtots[6])))
+        print('%8s|%8s|%8s' \
+              % ('M\u2081','M\u2082','M\u2083'))
+        print('%8s|%8s|%8s' \
+                % ( "{:.2f}".format(Mtots[1]), "{:.2f}".format(Mtots[2]), "{:.2f}".format(Mtots[3])))
 
-        print('\nModal Mass Participation Ratio') 
-        print('%4s|%8s|%8s|%8s|%8s|%8s|%8s' \
-            % ('Mode','M1 [%]','M2 [%]','M3 [%]','M4 [%]','M5 [%]','M6 [%]') )              
+        print('\nModal Mass Participation Factors') 
+        print('%4s|%7s|%7s|%7s' \
+            % ('Mode','\u0393\u2081','\u0393\u2082','\u0393\u2083') )             
         for mode in range(numEigen):
-            print('%4s|%8s|%8s|%8s|%8s|%8s|%8s' % ("{:.0f}".format(mode+1), \
-                "{:.2f}".format(Mratio[1][mode]), "{:.2f}".format(Mratio[2][mode]), "{:.2f}".format(Mratio[3][mode]), \
-                "{:.2f}".format(Mratio[4][mode]), "{:.2f}".format(Mratio[5][mode]), "{:.2f}".format(Mratio[6][mode])))  
+            print('%4s|%7s|%7s|%7s' % ("{:.0f}".format(mode+1), \
+                "{:.3f}".format(Mfactors[1][mode]), "{:.3f}".format(Mfactors[2][mode]), "{:.3f}".format(Mfactors[3][mode])))  
 
-        print('\nModal Mass Participation Ratio') 
-        print('%4s|%8s|%8s|%8s|%8s|%8s|%8s' \
-            % ('Mode','\u2211M1 [%]','\u2211M2 [%]','\u2211M3 [%]','\u2211M4 [%]','\u2211M5 [%]','\u2211M6 [%]') )              
+        print('\nEffective Modal Mass Participation Ratios [%]') 
+        print('%4s|%7s|%7s|%7s' \
+            % ('Mode','U\u2081','U\u2082','U\u2083') )              
         for mode in range(numEigen):
-            print('%4s|%8s|%8s|%8s|%8s|%8s|%8s' % ("{:.0f}".format(mode+1), \
-                "{:.2f}".format(sM1[mode]), "{:.2f}".format(sM2[mode]), "{:.2f}".format(sM3[mode]), \
-                "{:.2f}".format(sM4[mode]), "{:.2f}".format(sM5[mode]), "{:.2f}".format(sM6[mode])))  
+            print('%4s|%7s|%7s|%7s' % ("{:.0f}".format(mode+1), \
+                "{:.3f}".format(Mratios[1][mode]), "{:.3f}".format(Mratios[2][mode]), "{:.3f}".format(Mratios[3][mode])))  
 
-    return T, Mratio, Mtots
+        print('\nCumulative Effective Modal Mass Participation Ratios [%]') 
+        print('%4s|%7s|%7s|%7s' \
+            % ('Mode','\u2211U\u2081','\u2211U\u2082','\u2211U\u2083') )              
+        for mode in range(numEigen):
+            print('%4s|%7s|%7s|%7s' % ("{:.0f}".format(mode+1), \
+                "{:.3f}".format(sM1[mode]), "{:.3f}".format(sM2[mode]), "{:.3f}".format(sM3[mode])))  
+
+    return T, Mratios, Mfactors, Mtots
