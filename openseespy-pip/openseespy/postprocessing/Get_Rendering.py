@@ -1184,20 +1184,10 @@ def plot_fiberResponse2D(Model, LoadCase, element, section, LocalAxis = 'y', Inp
     if LocalAxis not in ['z', 'y']:
         raise Exception('Invalid LocalAxis type. Valid Entries are "z" and "y"')
         
-
-    if InputType == 'stress':
-        responseIndex = 3
-        axisYlabel = "Fiber Stress"
-    if InputType == 'strain':
-        responseIndex = 4
-        axisYlabel = "Fiber Strain"
+    # get the local axis and response labes and indexes
+    axisIndex, axisXlabel = ipltf._getAxisInfo(LocalAxis)
+    responseIndex, axisYlabel = ipltf._getResponseInfo(InputType)
     
-    if LocalAxis == 'z':
-        axisIndex = 1
-        axisXlabel = "Local z value"
-    if LocalAxis == 'y':
-        axisIndex = 0
-        axisXlabel = "Local y value"
     
     timeSteps, fiberData  = idbf._readFiberData2D(Model, LoadCase, element, section)
     
@@ -1235,7 +1225,7 @@ def plot_fiberResponse2D(Model, LoadCase, element, section, LocalAxis = 'y', Inp
     return fig, ax
     
 
-def animate_fiberResponse2D(Model, LoadCase, element, section,LocalAxis = 'y', InputType = 'stress', skipStart = 0, 
+def animate_fiberResponse2D(Model, LoadCase, element, section, LocalAxis = 'y', InputType = 'stress', skipStart = 0, 
                             skipEnd = 0, rFactor=1, outputFrames=0, fps = 24, Xbound = [], Ybound = []):
     """
     Parameters
@@ -1285,56 +1275,26 @@ def animate_fiberResponse2D(Model, LoadCase, element, section,LocalAxis = 'y', I
     # Catch invalid Direction types
     if LocalAxis not in ['z', 'y']:
         raise Exception('Invalid LocalAxis type. Valid Entries are "z" and "y"')
-        
-
-    if InputType == 'stress':
-        responseIndex = 3
-        axisYlabel = "Fiber Stress"
-    if InputType == 'strain':
-        responseIndex = 4
-        axisYlabel = "Fiber Strain"
     
-    if LocalAxis == 'z':
-        axisIndex = 1
-        axisXlabel = "Local z value"
-    if LocalAxis == 'y':
-        axisIndex = 0
-        axisXlabel = "Local y value"
+    # get the local axis and response labes and indexes
+    axisIndex, axisXlabel = ipltf._getAxisInfo(LocalAxis)
+    responseIndex, axisYlabel = ipltf._getResponseInfo(InputType)
     
     timeSteps, fiberData  = idbf._readFiberData2D(Model, LoadCase, element, section)
                 
-
+    # Get the desired iformation.
     fiberYPosition = fiberData[:,axisIndex::5]
     fiberResponse  = fiberData[:, responseIndex::5]
     
-    # Sort indexes so they appear in an appropraiate location
+    # Sort indexes so they appear in an appropraiate location.
     sortedIndexes = np.argsort(fiberYPosition[0,:])
     fibrePositionSorted = fiberYPosition[:,sortedIndexes]
     fibreResponseSorted = fiberResponse[:,sortedIndexes]    
     
+    # Get the bounds on the final output data.
+    xmin, xmax, ymin, ymax = ipltf._getFiberBounds(fibrePositionSorted, fibreResponseSorted, Xbound, Ybound)
     
-    # If end data is not being skipped, use the full vector length.
-    if skipEnd ==0:
-        skipEnd = len(fiberYPosition)    
-    
-    # Set up bounds based on data from 
-    if Xbound == []:
-        xmin = 1.1*np.min(fibrePositionSorted)
-        xmax = 1.1*np.max(fibrePositionSorted)
-    else:
-        xmin = Xbound[0]       
-        xmax = Xbound[1]
-    
-    if Ybound == []:
-        ymin = 1.1*np.min(fibreResponseSorted)  
-        ymax = 1.1*np.max(fibreResponseSorted)        
-    else:
-        ymin = Ybound[0]       
-        ymax = Ybound[1]          
-    
-    # Remove unecessary data
-    xinputs = fibrePositionSorted[skipStart:skipEnd, :]
-    yinputs = fibreResponseSorted[skipStart:skipEnd, :]
+    xinputs, yinputs = ipltf._skipFiberData(fibrePositionSorted, fibreResponseSorted, fiberYPosition,  skipStart, skipEnd)
 
     # Reduce the data if the user specifies
     if rFactor != 1:
@@ -1447,4 +1407,3 @@ def animate_fiberResponse2D(Model, LoadCase, element, section,LocalAxis = 'y', I
 									   
     plt.show()
     return line_ani
-
