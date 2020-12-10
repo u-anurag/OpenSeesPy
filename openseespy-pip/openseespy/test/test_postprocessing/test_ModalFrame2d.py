@@ -131,7 +131,7 @@ def test_ModalAnalysis_2DFrame():
 
     # calculate eigenvalues & print results
     numEigen = 7
-    T, Mratios, Mfactors, Mtots = ModalAnalysis(numEigen, outname='OpenSeespy', pflag=1)
+    T, Mratios, Mfactors, Mtots = ModalAnalysis(numEigen, outname='OpenSeespy', pflag=0)
 
     # determine PASS/FAILURE of test
     ok = 0

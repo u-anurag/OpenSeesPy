@@ -81,9 +81,6 @@ def test_ModalAnalysis_3DFrame():
     massX = 6.2112*kip*sec**2/ft
     massY = 6.2112*kip*sec**2/ft
     
-    # Distributed Loading
-    wload = -10*kip/ft
-    
     # Beam section properties
     v = 0.2
     Eb = 500000*kip/ft2
@@ -173,7 +170,7 @@ def test_ModalAnalysis_3DFrame():
                 op.element('elasticBeamColumn',eleTag,nodeI,nodeJ,Ab, Eb, Gb, Jb, Iyb, Izb, BeamYTransf)
                 no+=1
     
-    T, Mratios, Mfactors, Mtots = ModalAnalysis(numEigen, outname='OpenSeespy', pflag=1)
+    T, Mratios, Mfactors, Mtots = ModalAnalysis(numEigen, outname='OpenSeespy', pflag=0)
     
     # determine PASS/FAILURE of test
     ok = 0
